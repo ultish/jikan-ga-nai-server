@@ -19,7 +19,11 @@ export default {
       return await models.User.findByPk(id);
     },
     me: async (parent, args, { models, me }) => {
-      return await models.User.findByPk(me.id);
+      if (me) {
+        return await models.User.findByPk(me.id);
+      } else {
+        return null;
+      }
     },
   },
   Mutation: {
@@ -33,7 +37,10 @@ export default {
         password,
         email,
       });
-      return { token: createToken(user, secret, '1yr') };
+      return {
+        token: createToken(user, secret, '1yr'),
+        user: user,
+      };
     },
     signIn: async (parent, { login, password }, { models, secret }) => {
       const user = await models.User.findByLogin(login);
@@ -44,7 +51,10 @@ export default {
       if (!isValid) {
         throw new AuthenticationError('Invalid password');
       }
-      return { token: createToken(user, secret, '1yr') };
+      return {
+        token: createToken(user, secret, '1yr'),
+        user: user,
+      };
     },
     deleteUser: combineResolvers(
       isAdmin,

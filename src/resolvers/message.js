@@ -5,8 +5,8 @@ import { isAuthenticated, isMessageOwner } from './authorization';
 import Sequelize from 'sequelize';
 import pubsub, { EVENTS } from '../subscriptions';
 
-const toCursorHash = string => Buffer.from(string).toString('base64');
-const fromCursorHash = string =>
+const toCursorHash = (string) => Buffer.from(string).toString('base64');
+const fromCursorHash = (string) =>
   Buffer.from(string, 'base64').toString('ascii');
 
 export default {
@@ -16,7 +16,9 @@ export default {
         ? {
             where: {
               createdAt: {
-                [Sequelize.Op.lt]: fromCursorHash(cursor),
+                [Sequelize.Op.lt]: new Date(
+                  Number.parseInt(fromCursorHash(cursor))
+                ),
               },
             },
           }
@@ -33,7 +35,9 @@ export default {
         edges: edges,
         pageInfo: {
           hasNextPage,
-          endCursor: toCursorHash(edges[edges.length - 1].createdAt.toString()),
+          endCursor: toCursorHash(
+            edges[edges.length - 1].createdAt.getTime().toString()
+          ),
         },
       };
     },

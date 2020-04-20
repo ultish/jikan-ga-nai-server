@@ -73,5 +73,12 @@ export default {
         },
       });
     },
+    trackedDays: async (user, args, { models }) => {
+      return await models.TrackedDay.findAll({
+        where: {
+          userId: user.id,
+        },
+      });
+    },
   },
 };

@@ -17,7 +17,7 @@ import cors from 'cors';
 const getMe = async (req) => {
   const token = req.headers['x-token'];
 
-  console.log('Headers', req.headers);
+  // console.log('Headers', req.headers);
 
   if (token) {
     try {

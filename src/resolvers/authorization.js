@@ -12,6 +12,28 @@ export const isMessageOwner = async (parent, { id }, { models, me }) => {
   return skip;
 };
 
+export const isTrackedDayOwner = async (parent, { id }, { models, me }) => {
+  const trackedDay = await models.TrackedDay.findByPk(id, { raw: true });
+  if (trackedDay.userId !== me.id) {
+    throw new ForbiddenError('Not your Tracked Day.');
+  }
+  return skip;
+};
+
+export const isTrackedTaskOwner = async (parent, { id }, { models, me }) => {
+  const trackedTask = await models.TrackedTask.findByPk(id);
+  if (trackedTask) {
+    const trackedDay = await models.TrackedDay.findByPk(
+      trackedTask.trackeddayId,
+      { raw: true }
+    );
+    if (trackedDay.userId !== me.id) {
+      throw new ForbiddenError('Not your Tracked Task.');
+    }
+  }
+  return skip;
+};
+
 export const isAdmin = combineResolvers(
   isAuthenticated,
   (parent, args, { me: { role } }) => {

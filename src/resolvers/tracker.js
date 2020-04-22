@@ -11,7 +11,48 @@ import { ForbiddenError } from 'apollo-server';
 import pubsub, { EVENTS } from '../subscriptions';
 import chargecode from '../models/chargecode';
 
+import { toCursorHash, fromCursorHash } from './message';
+
 export default {
+  Query: {
+    trackedDays: async (parent, { cursor, limit = 100 }, { models, me }) => {
+      const cursorOptions = cursor
+        ? {
+            where: {
+              createdAt: {
+                [Sequelize.Op.lt]: new Date(
+                  Number.parseInt(fromCursorHash(cursor))
+                ),
+              },
+              userId: me.id,
+            },
+          }
+        : {
+            where: {
+              userId: me.id,
+            },
+          };
+
+      const trackedDays = await models.TrackedDay.findAll({
+        order: [['createdAt', 'DESC']],
+        limit: limit + 1,
+        ...cursorOptions,
+      });
+
+      const hasNextPage = trackedDays.length > limit;
+      const edges = hasNextPage ? trackedDays.slice(0, -1) : trackedDays;
+
+      return {
+        edges: edges,
+        pageInfo: {
+          hasNextPage,
+          endCursor: toCursorHash(
+            edges[edges.length - 1].createdAt.getTime().toString()
+          ),
+        },
+      };
+    },
+  },
   Mutation: {
     createTrackedDay: combineResolvers(
       isAuthenticated,

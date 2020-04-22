@@ -5,8 +5,8 @@ import { isAuthenticated, isMessageOwner } from './authorization';
 import Sequelize from 'sequelize';
 import pubsub, { EVENTS } from '../subscriptions';
 
-const toCursorHash = (string) => Buffer.from(string).toString('base64');
-const fromCursorHash = (string) =>
+export const toCursorHash = (string) => Buffer.from(string).toString('base64');
+export const fromCursorHash = (string) =>
   Buffer.from(string, 'base64').toString('ascii');
 
 export default {

@@ -69,7 +69,7 @@ server.applyMiddleware({ app, path: '/graphql' });
 const httpServer = http.createServer(app);
 server.installSubscriptionHandlers(httpServer);
 
-const eraseDatabaseOnSync = true;
+const eraseDatabaseOnSync = false;
 sequelize.sync({ force: eraseDatabaseOnSync }).then(async () => {
   if (eraseDatabaseOnSync) {
     createUsersWithMessages(new Date());
@@ -82,9 +82,9 @@ sequelize.sync({ force: eraseDatabaseOnSync }).then(async () => {
 const createUsersWithMessages = async (date) => {
   await models.User.create(
     {
-      username: 'rwieruch',
-      email: 'hello@robin.com',
-      password: 'rwieruch',
+      username: 'test',
+      email: 'hello@world.com',
+      password: 'password',
       role: 'ADMIN',
       messages: [
         {
@@ -100,8 +100,9 @@ const createUsersWithMessages = async (date) => {
   await models.User.create(
     {
       username: 'jxhui',
-      email: 'hello@david.com',
+      email: 'hello@world.com',
       password: 'password',
+      role: 'ADMIN',
       messages: [
         {
           text: 'Happy to release...',

@@ -38,8 +38,18 @@ export default gql`
     pageInfo: PageInfo!
   }
 
+  type TrackedTasksPaginated {
+    edges: [TrackedTask!]!
+    pageInfo: PageInfo!
+  }
+
   extend type Query {
     trackedDays(cursor: String, limit: Int): TrackedDayPaginated!
+    trackedTasks(
+      trackedDayId: ID!
+      cursor: String
+      limit: Int
+    ): TrackedTasksPaginated!
   }
   extend type Mutation {
     createTrackedDay(date: Date!, mode: DayMode): TrackedDay!

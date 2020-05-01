@@ -13,6 +13,14 @@ import chargecode from '../models/chargecode';
 
 import { toCursorHash, fromCursorHash } from './message';
 
+const calculateEndCursor = (edges) => {
+  if (edges && edges.length) {
+    return toCursorHash(edges[edges.length - 1].createdAt.getTime().toString());
+  } else {
+    return '';
+  }
+};
+
 export default {
   Query: {
     trackedDays: async (parent, { cursor, limit = 100 }, { models, me }) => {
@@ -46,9 +54,64 @@ export default {
         edges: edges,
         pageInfo: {
           hasNextPage,
-          endCursor: toCursorHash(
-            edges[edges.length - 1].createdAt.getTime().toString()
-          ),
+          endCursor: calculateEndCursor(edges),
+        },
+      };
+    },
+
+    trackedTasks: async (
+      parent,
+      { trackedDayId, cursor, limit = 1000 },
+      { models, me }
+    ) => {
+      const cursorOptions = cursor
+        ? {
+            where: {
+              createdAt: {
+                [Sequelize.Op.lt]: new Date(
+                  Number.parseInt(fromCursorHash(cursor))
+                ),
+              },
+              trackeddayId: trackedDayId,
+            },
+            include: [
+              {
+                model: models.TrackedDay,
+                required: true,
+                where: {
+                  userId: me.id,
+                },
+              },
+            ],
+          }
+        : {
+            where: {
+              trackeddayId: trackedDayId,
+            },
+            include: [
+              {
+                model: models.TrackedDay,
+                required: true,
+                where: {
+                  userId: me.id,
+                },
+              },
+            ],
+          };
+      const trackedTasks = await models.TrackedTask.findAll({
+        order: [['createdAt', 'DESC']],
+        limit: limit + 1,
+        ...cursorOptions,
+      });
+
+      const hasNextPage = trackedTasks.length > limit;
+      const edges = hasNextPage ? trackedTasks.slice(0, -1) : trackedTasks;
+
+      return {
+        edges: edges,
+        pageInfo: {
+          hasNextPage,
+          endCursor: calculateEndCursor(edges),
         },
       };
     },

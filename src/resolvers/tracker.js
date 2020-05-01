@@ -23,6 +23,10 @@ const calculateEndCursor = (edges) => {
 
 export default {
   Query: {
+    trackedDay: async (parent, { trackedDayId }, { models, me }) => {
+      return await models.TrackedDay.findByPk(trackedDayId);
+    },
+
     trackedDays: async (parent, { cursor, limit = 100 }, { models, me }) => {
       const cursorOptions = cursor
         ? {
@@ -121,7 +125,7 @@ export default {
       isAuthenticated,
       async (parent, { date, mode }, { me, models }) => {
         const trackedDay = await models.TrackedDay.create({
-          date,
+          date: new Date(date),
           mode,
           userId: me.id,
         });
@@ -138,7 +142,7 @@ export default {
       async (parent, { id, date, mode }, { models }) => {
         const trackedDay = await models.TrackedDay.findByPk(id);
         if (date) {
-          trackedDay.date = date;
+          trackedDay.date = new Date(date);
         }
         if (mode) {
           trackedDay.mode = mode;
@@ -310,6 +314,14 @@ export default {
           trackeddayId: trackedDay.id,
         },
       });
+    },
+    date: async (trackedDay) => {
+      return trackedDay.date.getTime();
+    },
+  },
+  TimeBlock: {
+    startTime: async (timeBlock) => {
+      return timeBlock.startTime.getTime();
     },
   },
   TrackedTask: {

@@ -9,7 +9,7 @@ export default gql`
   }
   type TrackedDay {
     id: ID!
-    date: Date!
+    date: Float!
     mode: DayMode!
     tasks: [TrackedTask!]
     user: User!
@@ -29,7 +29,7 @@ export default gql`
   }
   type TimeBlock {
     id: ID!
-    startTime: Date!
+    startTime: Float!
     minutes: Int
   }
 
@@ -45,6 +45,7 @@ export default gql`
 
   extend type Query {
     trackedDays(cursor: String, limit: Int): TrackedDayPaginated!
+    trackedDay(trackedDayId: ID!): TrackedDay!
     trackedTasks(
       trackedDayId: ID!
       cursor: String
@@ -52,7 +53,7 @@ export default gql`
     ): TrackedTasksPaginated!
   }
   extend type Mutation {
-    createTrackedDay(date: Date!, mode: DayMode): TrackedDay!
+    createTrackedDay(date: Float!, mode: DayMode): TrackedDay!
     createTrackedTask(
       trackedDayId: ID!
       notes: String
@@ -66,11 +67,11 @@ export default gql`
     ): ChargeCode!
     createTimeBlock(
       trackedTaskId: ID!
-      startTime: Date!
+      startTime: Float!
       minutes: Int
     ): TimeBlock!
 
-    updateTrackedDay(id: ID!, date: Date, mode: DayMode): TrackedDay!
+    updateTrackedDay(id: ID!, date: Float, mode: DayMode): TrackedDay!
     updateTrackedTask(id: ID!, notes: String, chargeCodeIds: [ID]): TrackedTask!
     updateChargeCode(
       id: ID!

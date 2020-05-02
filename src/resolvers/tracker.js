@@ -63,6 +63,13 @@ export default {
       };
     },
 
+    timeBlocks: async (parent, { trackedTaskId }, { models, me }) => {
+      return await models.TimeBlock.findAll({
+        where: {
+          trackedtaskId: trackedTaskId,
+        },
+      });
+    },
     trackedTasks: async (
       parent,
       { trackedDayId, cursor, limit = 1000 },
@@ -283,15 +290,22 @@ export default {
         // pubsub.publish(EVENTS.TRACKER.DELETED_TRACKEDDAY, {
         //   trackedDayDeleted: { id },
         // });
-        return result;
+        if (result) {
+          return id;
+        } else {
+          return null;
+        }
       }
     ),
     deleteTimeBlock: combineResolvers(
       isAuthenticated,
       async (parent, { id }, { models }) => {
         const result = await models.TimeBlock.destroy({ where: { id } });
-
-        return result;
+        if (result) {
+          return id;
+        } else {
+          return null;
+        }
       }
     ),
     deleteTrackedTask: combineResolvers(
@@ -299,8 +313,11 @@ export default {
       isTrackedTaskOwner,
       async (parent, { id }, { models }) => {
         const result = await models.TrackedTask.destroy({ where: { id } });
-
-        return result;
+        if (result) {
+          return id;
+        } else {
+          return null;
+        }
       }
     ),
   },

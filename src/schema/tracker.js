@@ -51,6 +51,7 @@ export default gql`
       cursor: String
       limit: Int
     ): TrackedTasksPaginated!
+    timeBlocks(trackedTaskId: ID!): [TimeBlock!]!
   }
   extend type Mutation {
     createTrackedDay(date: Float!, mode: DayMode): TrackedDay!
@@ -82,8 +83,8 @@ export default gql`
     ): ChargeCode!
     updateTimeBlock(id: ID!, minutes: Int!): TimeBlock!
 
-    deleteTrackedDay(id: ID!): Boolean!
-    deleteTrackedTask(id: ID!): Boolean!
-    deleteTimeBlock(id: ID!): Boolean!
+    deleteTrackedDay(id: ID!): ID
+    deleteTrackedTask(id: ID!): ID
+    deleteTimeBlock(id: ID!): ID
   }
 `;

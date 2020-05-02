@@ -342,6 +342,9 @@ export default {
     },
   },
   TrackedTask: {
+    createdAt: async (trackedTask) => {
+      return trackedTask.createdAt.getTime();
+    },
     chargeCodes: async (trackedTask, args, { models }) => {
       return await models.ChargeCode.findAll({
         include: [

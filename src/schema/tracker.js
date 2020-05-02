@@ -19,6 +19,7 @@ export default gql`
     notes: String
     chargeCodes: [ChargeCode!]
     timeBlocks: [TimeBlock!]
+    createdAt: Float!
   }
   type ChargeCode {
     id: ID!

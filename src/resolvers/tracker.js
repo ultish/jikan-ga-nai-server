@@ -13,6 +13,8 @@ import chargecode from '../models/chargecode';
 
 import { toCursorHash, fromCursorHash } from './message';
 
+import moment from 'moment';
+
 const calculateEndCursor = (edges) => {
   if (edges && edges.length) {
     return toCursorHash(edges[edges.length - 1].createdAt.getTime().toString());
@@ -21,8 +23,52 @@ const calculateEndCursor = (edges) => {
   }
 };
 
+const getTrackedDay = async (trackedDayId, models, me) => {
+  return await models.TrackedDay.findAll({
+    limit: 1,
+    where: {
+      id: trackedDayId,
+      userId: me.id,
+    },
+  });
+};
+
 export default {
   Query: {
+    timesheet: async (parent, { trackedDayId }, { models, me }) => {
+      // fetch the tracked day first
+      debugger;
+      const trackedDay = await getTrackedDay(trackedDayId, models, me);
+      if (trackedDay.length) {
+        const day = trackedDay[0];
+        // given this day, work out the week-ending
+        const date = moment(day.date);
+        const endOfWeek = date.clone().endOf('week').add(1, 'second');
+
+        // find timesheet for this endOfWeek
+        let timesheet = await models.Timesheet.findAll({
+          where: {
+            weekEndingDate: endOfWeek.toDate(),
+          },
+          limit: 1,
+        });
+
+        if (!timesheet.length) {
+          // create it
+
+          // TODO special case end of year and start of year scenarios
+
+          timesheet = await models.Timesheet.create({
+            weekEndingDate: endOfWeek.toDate(),
+            userId: me.id,
+          });
+          return timesheet;
+        } else {
+          return timesheet[0];
+        }
+      }
+      return null;
+    },
     trackedDay: async (parent, { trackedDayId }, { models, me }) => {
       return await models.TrackedDay.findByPk(trackedDayId);
     },
@@ -346,6 +392,11 @@ export default {
   TimeBlock: {
     startTime: async (timeBlock) => {
       return timeBlock.startTime.getTime();
+    },
+  },
+  Timesheet: {
+    weekEndingDate: async (timesheet) => {
+      return timesheet.weekEndingDate.getTime();
     },
   },
   TrackedTask: {

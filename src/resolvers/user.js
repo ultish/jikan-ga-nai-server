@@ -80,5 +80,12 @@ export default {
         },
       });
     },
+    timesheets: async (user, args, { models }) => {
+      return await models.Timesheet.findAll({
+        where: {
+          userId: user.id,
+        },
+      });
+    },
   },
 };

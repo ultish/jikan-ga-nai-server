@@ -7,6 +7,18 @@ export default gql`
     HOL_RDO
     HOL_ANNUAL
   }
+  type Timesheet {
+    id: ID!
+    weekEndingDate: Float!
+    timeCharged: [TimeCharge!]!
+    user: User!
+  }
+  type TimeCharge {
+    id: ID!
+    date: Float!
+    chargeCode: ChargeCode!
+    value: Float!
+  }
   type TrackedDay {
     id: ID!
     date: Float!
@@ -33,12 +45,10 @@ export default gql`
     startTime: Float!
     minutes: Int
   }
-
   type TrackedDayPaginated {
     edges: [TrackedDay!]!
     pageInfo: PageInfo!
   }
-
   type TrackedTasksPaginated {
     edges: [TrackedTask!]!
     pageInfo: PageInfo!
@@ -54,6 +64,7 @@ export default gql`
     ): TrackedTasksPaginated!
     timeBlocks(trackedTaskId: ID!): [TimeBlock!]!
     chargeCodes: [ChargeCode!]!
+    timesheet(trackedDayId: ID!): Timesheet
   }
   extend type Mutation {
     createTrackedDay(date: Float!, mode: DayMode): TrackedDay!

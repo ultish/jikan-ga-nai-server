@@ -50,7 +50,6 @@ const server = new ApolloServer({
       };
     }
     if (req) {
-      debugger;
       const me = await getMe(req);
 
       return {
@@ -69,7 +68,8 @@ server.applyMiddleware({ app, path: '/graphql' });
 const httpServer = http.createServer(app);
 server.installSubscriptionHandlers(httpServer);
 
-const eraseDatabaseOnSync = false;
+// Warning: turning this on will clear your DB
+const eraseDatabaseOnSync = true;
 sequelize.sync({ force: eraseDatabaseOnSync }).then(async () => {
   if (eraseDatabaseOnSync) {
     createUsersWithMessages(new Date());
@@ -83,7 +83,7 @@ const createUsersWithMessages = async (date) => {
   await models.User.create(
     {
       username: 'test',
-      email: 'hello@world.com',
+      email: 'test@world.com',
       password: 'password',
       role: 'ADMIN',
       messages: [

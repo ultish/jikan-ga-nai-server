@@ -70,6 +70,9 @@ export default {
         },
       });
     },
+    chargeCodes: async (parent, {}, { models }) => {
+      return await models.ChargeCode.findAll();
+    },
     trackedTasks: async (
       parent,
       { trackedDayId, cursor, limit = 1000 },
@@ -205,8 +208,12 @@ export default {
           });
         }
 
-        trackedTask.notes = notes;
-        await trackedTask.setChargecodes(chargeCodes);
+        if (notes !== undefined) {
+          trackedTask.notes = notes;
+        }
+        if (chargeCodeIds !== undefined) {
+          await trackedTask.setChargecodes(chargeCodes);
+        }
         await trackedTask.save();
 
         return trackedTask;

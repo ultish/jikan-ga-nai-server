@@ -53,6 +53,7 @@ export default gql`
       limit: Int
     ): TrackedTasksPaginated!
     timeBlocks(trackedTaskId: ID!): [TimeBlock!]!
+    chargeCodes: [ChargeCode!]!
   }
   extend type Mutation {
     createTrackedDay(date: Float!, mode: DayMode): TrackedDay!

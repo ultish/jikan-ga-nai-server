@@ -7,11 +7,13 @@ export default gql`
     HOL_RDO
     HOL_ANNUAL
   }
+
   type Timesheet {
     id: ID!
     weekEndingDate: Float!
     timeCharged: [TimeCharge!]!
     user: User!
+    trackedDays: [TrackedDay!]!
   }
   type TimeCharge {
     id: ID!
@@ -25,6 +27,7 @@ export default gql`
     mode: DayMode!
     tasks: [TrackedTask!]
     user: User!
+    timeCharges: [TimeCharge!]
   }
   type TrackedTask {
     id: ID!
@@ -99,5 +102,9 @@ export default gql`
     deleteTrackedDay(id: ID!): ID
     deleteTrackedTask(id: ID!): ID
     deleteTimeBlock(id: ID!): ID
+  }
+
+  extend type Subscription {
+    timesheetUpdated: Timesheet
   }
 `;

@@ -15,6 +15,9 @@ import { toCursorHash, fromCursorHash } from './message';
 
 import moment from 'moment';
 
+// how many minutes each time block represents
+const TIMEBLOCK_DURATION = 15;
+
 const calculateEndCursor = (edges) => {
   if (edges && edges.length) {
     return toCursorHash(edges[edges.length - 1].createdAt.getTime().toString());
@@ -24,12 +27,153 @@ const calculateEndCursor = (edges) => {
 };
 
 const getTrackedDay = async (trackedDayId, models, me) => {
-  return await models.TrackedDay.findAll({
+  const trackedDays = await models.TrackedDay.findAll({
     limit: 1,
     where: {
       id: trackedDayId,
       userId: me.id,
     },
+  });
+  if (trackedDays.length) {
+    return trackedDays[0];
+  } else {
+    return null;
+  }
+};
+
+const updateTimesheetCodeChanges = async (trackedTask, chargeCodes) => {
+  /*
+  when code changes for a task, we need to wipe all TimeCharged for
+  this task and re-create them  
+  */
+};
+
+const updateTimesheet = async (
+  models,
+  trackedDay,
+  trackedTask,
+  timeBlock,
+  increment = true
+) => {
+  debugger;
+  // find the timesheet first
+  if (!trackedDay.timesheetId) {
+    console.error('No timesheet for TrackedDay: ' + trackedDay.id);
+    return;
+  }
+
+  debugger;
+
+  const timesheet = await models.Timesheet.findByPk(trackedDay.timesheetId);
+
+  debugger;
+
+  if (timesheet) {
+    const chargeCodes = await trackedTaskChargeCodes(
+      models,
+      trackedTask.id,
+      trackedDay.id
+    );
+
+    if (chargeCodes.length) {
+      debugger;
+      // not creating any ChargedTime without charge codes
+      const timeCharges = await fetchTimeCharges(
+        models,
+        trackedDay,
+        timesheet.id,
+        chargeCodes.map((cc) => cc.id)
+      );
+
+      debugger;
+
+      // for each timeCharges, add a bit of time
+      let toIncrement = TIMEBLOCK_DURATION / timeCharges.length;
+      if (!increment) {
+        toIncrement = toIncrement * -1;
+      }
+      for (let timeCharge of timeCharges) {
+        timeCharge.value = Math.max(0, timeCharge.value + toIncrement);
+        await timeCharge.save();
+      }
+    }
+  } else {
+    console.error('Could not find Timesheet: ' + trackedDay.timesheetId);
+  }
+};
+
+/**
+ * Fetches TimeCharges based on timesheet, chargecodes, and tracked day.
+ *
+ * Will create TimeCharges is they don't exist for these 3 combos
+ *
+ * @param {*} models
+ * @param {*} trackedDay
+ * @param {*} timesheetId
+ * @param {*} chargeCodeIds
+ */
+const fetchTimeCharges = async (
+  models,
+  trackedDay,
+  timesheetId,
+  chargeCodeIds
+) => {
+  debugger;
+
+  const existingTimeCharges = await models.TimeCharge.findAll({
+    where: {
+      timesheetId: timesheetId,
+      trackeddayId: trackedDay.id,
+      chargecodeId: {
+        [Sequelize.Op.in]: chargeCodeIds,
+      },
+    },
+  });
+
+  debugger;
+
+  const result = [...existingTimeCharges];
+  if (chargeCodeIds.length !== existingTimeCharges.length) {
+    const existingChargeCodeIds = existingTimeCharges.map(
+      (tc) => tc.chargecodeId
+    );
+
+    // something missing, create them
+    const missingChargeCodes = chargeCodeIds.filter(
+      (id) => !existingChargeCodeIds.includes(id)
+    );
+    debugger;
+
+    for (let chargeCodeId of missingChargeCodes) {
+      // create TimeCharge
+      const addedTimeCharge = await models.TimeCharge.create({
+        date: trackedDay.date,
+        value: 0,
+        trackeddayId: trackedDay.id,
+        timesheetId: timesheetId,
+        chargecodeId: chargeCodeId,
+      });
+
+      result.push(addedTimeCharge);
+    }
+  }
+
+  debugger;
+
+  return result;
+};
+
+const trackedTaskChargeCodes = async (models, trackedTaskId) => {
+  return await models.ChargeCode.findAll({
+    include: [
+      {
+        model: models.TrackedTask,
+        through: 'taskcodes',
+        where: {
+          id: trackedTaskId,
+        },
+      },
+    ],
   });
 };
 
@@ -37,13 +181,20 @@ export default {
   Query: {
     timesheet: async (parent, { trackedDayId }, { models, me }) => {
       // fetch the tracked day first
-      debugger;
-      const trackedDay = await getTrackedDay(trackedDayId, models, me);
-      if (trackedDay.length) {
-        const day = trackedDay[0];
+
+      let trackedDay = await getTrackedDay(trackedDayId, models, me);
+      if (trackedDay) {
         // given this day, work out the week-ending
-        const date = moment(day.date);
-        const endOfWeek = date.clone().endOf('week').add(1, 'second');
+        const date = moment(trackedDay.date);
+
+        let endOfWeek;
+        // TODO special case end of year and start of year scenarios
+        if (date.weekYear() !== date.year()) {
+          // endOfWeek becomes the last day of the year instead
+          endOfWeek = moment.endOf('year').startOf('day');
+        } else {
+          endOfWeek = date.clone().endOf('isoweek').startOf('day');
+        }
 
         // find timesheet for this endOfWeek
         let timesheet = await models.Timesheet.findAll({
@@ -55,13 +206,13 @@ export default {
 
         if (!timesheet.length) {
           // create it
-
-          // TODO special case end of year and start of year scenarios
-
           timesheet = await models.Timesheet.create({
             weekEndingDate: endOfWeek.toDate(),
             userId: me.id,
           });
+          trackedDay.timesheetId = timesheet.id;
+          trackedDay = await trackedDay.save();
+
           return timesheet;
         } else {
           return timesheet[0];
@@ -257,10 +408,17 @@ export default {
         if (notes !== undefined) {
           trackedTask.notes = notes;
         }
+
+        let codesChanged = false;
         if (chargeCodeIds !== undefined) {
+          codesChanged = true;
           await trackedTask.setChargecodes(chargeCodes);
         }
         await trackedTask.save();
+
+        if (codesChanged) {
+          updateTimesheetCodeChanges(trackedTask, chargeCodes);
+        }
 
         return trackedTask;
       }
@@ -303,6 +461,7 @@ export default {
       async (parent, { trackedTaskId, startTime, minutes }, { me, models }) => {
         const trackedTask = await models.TrackedTask.findByPk(trackedTaskId);
 
+        // TODO add TIMESHEET subscription here
         if (trackedTask) {
           const trackedDay = await models.TrackedDay.findByPk(
             trackedTask.trackeddayId
@@ -313,6 +472,8 @@ export default {
               startTime,
               minutes,
             });
+
+            updateTimesheet(models, trackedDay, trackedTask, timeBlock);
 
             return timeBlock;
           } else {
@@ -353,12 +514,23 @@ export default {
     deleteTimeBlock: combineResolvers(
       isAuthenticated,
       async (parent, { id }, { models }) => {
-        const result = await models.TimeBlock.destroy({ where: { id } });
-        if (result) {
-          return id;
-        } else {
-          return null;
+        const timeBlock = await models.TimeBlock.findByPk(id);
+        if (timeBlock) {
+          const trackedTask = await models.TrackedTask.findByPk(
+            timeBlock.trackedtaskId
+          );
+          const trackedDay = await models.TrackedDay.findByPk(
+            trackedTask.trackeddayId
+          );
+
+          updateTimesheet(models, trackedDay, trackedTask, timeBlock, false);
+
+          const result = await models.TimeBlock.destroy({ where: { id } });
+          if (result) {
+            return id;
+          }
         }
+        return null;
       }
     ),
     deleteTrackedTask: combineResolvers(
@@ -373,6 +545,11 @@ export default {
         }
       }
     ),
+  },
+  Subscription: {
+    timesheetUpdated: {
+      subscribe: () => pubsub.asyncIterator(EVENTS.TRACKER.UPDATED_TIMESHEET),
+    },
   },
   TrackedDay: {
     user: async (trackedDay, args, { loaders }) => {
@@ -394,9 +571,31 @@ export default {
       return timeBlock.startTime.getTime();
     },
   },
+  TimeCharge: {
+    date: async (timeCharge) => {
+      return timeCharge.date.getTime();
+    },
+    chargeCode: async (timeCharge, args, { models }) => {
+      return await models.ChargeCode.findByPk(timeCharge.chargecodeId);
+    },
+  },
   Timesheet: {
     weekEndingDate: async (timesheet) => {
       return timesheet.weekEndingDate.getTime();
+    },
+    trackedDays: async (timesheet, args, { models }) => {
+      return await models.TrackedDay.findAll({
+        where: {
+          timesheetId: timesheet.id,
+        },
+      });
+    },
+    timeCharged: async (timesheet, args, { models }) => {
+      return await models.TimeCharge.findAll({
+        where: {
+          timesheetId: timesheet.id,
+        },
+      });
     },
   },
   TrackedTask: {
@@ -404,17 +603,7 @@ export default {
       return trackedTask.createdAt.getTime();
     },
     chargeCodes: async (trackedTask, args, { models }) => {
-      return await models.ChargeCode.findAll({
-        include: [
-          {
-            model: models.TrackedTask,
-            through: 'taskcodes',
-            where: {
-              id: trackedTask.id,
-            },
-          },
-        ],
-      });
+      return await trackedTaskChargeCodes(models, trackedTask.id);
     },
     timeBlocks: async (trackedTask, args, { models }) => {
       return await models.TimeBlock.findAll({

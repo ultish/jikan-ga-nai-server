@@ -9,7 +9,7 @@ const trackedTask = (sequelize, DataTypes) => {
     TrackedTask.hasMany(models.TimeBlock, { onDelete: 'CASCADE' });
     TrackedTask.belongsToMany(models.ChargeCode, { through: 'taskcodes' });
     TrackedTask.belongsTo(models.TrackedDay);
-    TrackedTask.belongsTo(models.Timesheet);
+    // TrackedTask.belongsTo(models.Timesheet);
   };
 
   return TrackedTask;

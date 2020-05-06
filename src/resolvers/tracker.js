@@ -15,8 +15,12 @@ import { toCursorHash, fromCursorHash } from './message';
 
 import moment from 'moment';
 
+import AsyncLock from 'async-lock';
+
 // how many minutes each time block represents
 const TIMEBLOCK_DURATION = 15;
+
+const timeChargeLock = new AsyncLock();
 
 const calculateEndCursor = (edges) => {
   if (edges && edges.length) {
@@ -41,62 +45,172 @@ const getTrackedDay = async (trackedDayId, models, me) => {
   }
 };
 
-const updateTimesheetCodeChanges = async (trackedTask, chargeCodes) => {
+const updateTimesheetCodeChanges = async (
+  models,
+  trackedTask,
+  previousChargeCodes,
+  newChargeCodes
+) => {
   /*
   when code changes for a task, we need to wipe all TimeCharged for
   this task and re-create them  
+
+  - delete all timeCharges for a given trackedTaskId
+  - count number of time blocks for a given trackedTaskId
+  - multiple count and divide by chargecodes and that gives the new value
+
+  call fetchTimeCharges() to re-create the timeCharge instances
   */
+
+  // const timesheet = await models.Timesheet.findByPk(trackedTask.timesheetId);
+  const trackedDay = await models.TrackedDay.findByPk(trackedTask.trackeddayId);
+
+  const previousChargeCodeIds = previousChargeCodes.map((cc) => cc.id);
+  const newChargeCodeIds = newChargeCodes.map((cc) => cc.id);
+
+  // fetch all trackedTasks for this day
+  const allTrackedTasks = await models.TrackedTask.findAll({
+    where: {
+      trackeddayId: trackedDay.id,
+    },
+  });
+
+  // find all chargecode IDs used by the trackedTasks for this day
+  const trackedTaskChargeCodeIds = await models.ChargeCode.findAll({
+    attributes: ['id'],
+    include: [
+      {
+        model: models.TrackedTask,
+        through: 'taskcodes',
+        where: {
+          id: {
+            [Sequelize.Op.in]: allTrackedTasks.map((tt) => tt.id),
+          },
+        },
+      },
+    ],
+  }).map((model) => model.id);
+
+  const allChargeCodeIds = [...previousChargeCodeIds];
+  trackedTaskChargeCodeIds.forEach((ccId) => {
+    if (!allChargeCodeIds.includes(ccId)) {
+      allChargeCodeIds.push(ccId);
+    }
+  });
+
+  // fetch TimeCharges for this timesheet, trackedDay, and chargeCodes used
+  const existingTimeCharges = await models.TimeCharge.findAll({
+    where: {
+      timesheetId: trackedDay.timesheetId,
+      trackeddayId: trackedDay.id,
+      chargecodeId: {
+        [Sequelize.Op.in]: allChargeCodeIds,
+      },
+    },
+  });
+
+  // delete all timeCharges associated with this day
+  for (let existingTC of existingTimeCharges) {
+    await existingTC.destroy();
+  }
+
+  const allChargeCodesInDay = [];
+
+  // regenerate the TimeCharges for all chargecodes used by the tasks
+  const timeCharges = await fetchTimeCharges(
+    models,
+    trackedDay,
+    trackedDay.timesheetId,
+    trackedTaskChargeCodeIds
+  );
+
+  const chargeCodeToTimeChargeMap = {};
+  timeCharges.forEach((tc) => {
+    chargeCodeToTimeChargeMap[tc.chargecodeId] = tc;
+  });
+
+  // re-compute the time charged to each chargecode
+  for (let trackedTask of allTrackedTasks) {
+    const chargeCodes = await trackedTaskChargeCodes(models, trackedTask.id);
+    const timeBlocks = await models.TimeBlock.findAll({
+      where: {
+        trackedtaskId: trackedTask.id,
+      },
+    });
+
+    const numChargeCodes = chargeCodes.length;
+    const value = (TIMEBLOCK_DURATION * timeBlocks.length) / numChargeCodes;
+
+    for (let chargeCode of chargeCodes) {
+      const timeCharge = chargeCodeToTimeChargeMap[chargeCode.id];
+      timeCharge.value = timeCharge.value + value;
+      await timeCharge.save();
+    }
+  }
+
+  const timesheet = await models.Timesheet.findByPk(trackedDay.timesheetId);
+
+  pubsub.publish(EVENTS.TRACKER.UPDATED_TIMESHEET, {
+    timesheetUpdated: timesheet,
+  });
 };
 
+/**
+ * a lock is used here as both createTimeBlock and deleteTimeBlock will
+ * read from TimeCharged.value and increment/decrement the value. These
+ * 2 calls can be called nearly at the same time (drag mouse over blocks)
+ * and it will call updateTimesheet together. Now node is single-threaded,
+ * but this function is async so there is plenty of chances for node to
+ * switch context and continue work elsewhere while it awaits a promise.
+ */
 const updateTimesheet = async (
   models,
   trackedDay,
   trackedTask,
-  timeBlock,
   increment = true
 ) => {
-  debugger;
   // find the timesheet first
   if (!trackedDay.timesheetId) {
     console.error('No timesheet for TrackedDay: ' + trackedDay.id);
     return;
   }
 
-  debugger;
-
   const timesheet = await models.Timesheet.findByPk(trackedDay.timesheetId);
 
-  debugger;
-
   if (timesheet) {
-    const chargeCodes = await trackedTaskChargeCodes(
-      models,
-      trackedTask.id,
-      trackedDay.id
-    );
+    // get the 'timecharged' lock
+    timeChargeLock.acquire('timecharged', async () => {
+      const chargeCodes = await trackedTaskChargeCodes(models, trackedTask.id);
 
-    if (chargeCodes.length) {
-      debugger;
-      // not creating any ChargedTime without charge codes
-      const timeCharges = await fetchTimeCharges(
-        models,
-        trackedDay,
-        timesheet.id,
-        chargeCodes.map((cc) => cc.id)
-      );
+      if (chargeCodes.length) {
+        // not creating any ChargedTime without charge codes
+        const timeCharges = await fetchTimeCharges(
+          models,
+          trackedDay,
+          timesheet.id,
+          chargeCodes.map((cc) => cc.id)
+        );
 
-      debugger;
-
-      // for each timeCharges, add a bit of time
-      let toIncrement = TIMEBLOCK_DURATION / timeCharges.length;
-      if (!increment) {
-        toIncrement = toIncrement * -1;
+        // for each timeCharges, add a bit of time
+        let toIncrement = TIMEBLOCK_DURATION / timeCharges.length;
+        if (!increment) {
+          toIncrement = toIncrement * -1;
+        }
+        for (let timeCharge of timeCharges) {
+          console.log(
+            'TIMECHARGE: ',
+            timeCharge.chargecodeId,
+            timeCharge.value + toIncrement
+          );
+          timeCharge.value = Math.max(0, timeCharge.value + toIncrement);
+          await timeCharge.save();
+        }
       }
-      for (let timeCharge of timeCharges) {
-        timeCharge.value = Math.max(0, timeCharge.value + toIncrement);
-        await timeCharge.save();
-      }
-    }
+
+      pubsub.publish(EVENTS.TRACKER.UPDATED_TIMESHEET, {
+        timesheetUpdated: timesheet,
+      });
+    });
   } else {
     console.error('Could not find Timesheet: ' + trackedDay.timesheetId);
   }
@@ -118,8 +232,6 @@ const fetchTimeCharges = async (
   timesheetId,
   chargeCodeIds
 ) => {
-  debugger;
-
   const existingTimeCharges = await models.TimeCharge.findAll({
     where: {
       timesheetId: timesheetId,
@@ -129,8 +241,6 @@ const fetchTimeCharges = async (
       },
     },
   });
-
-  debugger;
 
   const result = [...existingTimeCharges];
   if (chargeCodeIds.length !== existingTimeCharges.length) {
@@ -142,8 +252,6 @@ const fetchTimeCharges = async (
     const missingChargeCodes = chargeCodeIds.filter(
       (id) => !existingChargeCodeIds.includes(id)
     );
-    debugger;
-
     for (let chargeCodeId of missingChargeCodes) {
       // create TimeCharge
       const addedTimeCharge = await models.TimeCharge.create({
@@ -158,13 +266,16 @@ const fetchTimeCharges = async (
     }
   }
 
-  debugger;
-
   return result;
 };
 
-const trackedTaskChargeCodes = async (models, trackedTaskId) => {
+const trackedTaskChargeCodes = async (
+  models,
+  trackedTaskId,
+  attributes = null
+) => {
   return await models.ChargeCode.findAll({
+    attributes,
     include: [
       {
         model: models.TrackedTask,
@@ -396,6 +507,11 @@ export default {
       async (parent, { id, notes, chargeCodeIds }, { me, models }) => {
         const trackedTask = await models.TrackedTask.findByPk(id);
 
+        const previousChargeCodes = await trackedTaskChargeCodes(
+          models,
+          trackedTask.id
+        );
+
         let chargeCodes = [];
         if (chargeCodeIds && chargeCodeIds.length) {
           chargeCodes = await models.ChargeCode.findAll({
@@ -413,11 +529,17 @@ export default {
         if (chargeCodeIds !== undefined) {
           codesChanged = true;
           await trackedTask.setChargecodes(chargeCodes);
+          const again = await trackedTaskChargeCodes(models, trackedTask.id);
         }
         await trackedTask.save();
 
         if (codesChanged) {
-          updateTimesheetCodeChanges(trackedTask, chargeCodes);
+          await updateTimesheetCodeChanges(
+            models,
+            trackedTask,
+            previousChargeCodes,
+            chargeCodes
+          );
         }
 
         return trackedTask;
@@ -473,7 +595,7 @@ export default {
               minutes,
             });
 
-            updateTimesheet(models, trackedDay, trackedTask, timeBlock);
+            await updateTimesheet(models, trackedDay, trackedTask);
 
             return timeBlock;
           } else {
@@ -523,7 +645,7 @@ export default {
             trackedTask.trackeddayId
           );
 
-          updateTimesheet(models, trackedDay, trackedTask, timeBlock, false);
+          await updateTimesheet(models, trackedDay, trackedTask, false);
 
           const result = await models.TimeBlock.destroy({ where: { id } });
           if (result) {

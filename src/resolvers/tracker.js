@@ -180,7 +180,9 @@ const updateTimesheet = async (
   if (timesheet) {
     // get the 'timecharged' lock
     timeChargeLock.acquire('timecharged', async () => {
-      const chargeCodes = await trackedTaskChargeCodes(models, trackedTask.id);
+      const chargeCodes = await trackedTaskChargeCodes(models, trackedTask.id, [
+        'id',
+      ]);
 
       if (chargeCodes.length) {
         // not creating any ChargedTime without charge codes
@@ -529,7 +531,7 @@ export default {
         if (chargeCodeIds !== undefined) {
           codesChanged = true;
           await trackedTask.setChargecodes(chargeCodes);
-          const again = await trackedTaskChargeCodes(models, trackedTask.id);
+          // const again = await trackedTaskChargeCodes(models, trackedTask.id);
         }
         await trackedTask.save();
 

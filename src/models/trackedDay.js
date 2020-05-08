@@ -1,5 +1,5 @@
 const trackedDay = (sequelize, DataTypes) => {
-  const TrackedDay = sequelize.define('trackedday', {
+  const TrackedDay = sequelize.define("trackedday", {
     date: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -17,9 +17,9 @@ const trackedDay = (sequelize, DataTypes) => {
   });
 
   TrackedDay.associate = (models) => {
-    TrackedDay.hasMany(models.TrackedTask, { onDelete: 'CASCADE' });
+    TrackedDay.hasMany(models.TrackedTask, { onDelete: "CASCADE" });
     TrackedDay.belongsTo(models.User);
-    TrackedDay.hasMany(models.TimeCharge, { onDelete: 'CASCADE' });
+    TrackedDay.hasMany(models.TimeCharge, { onDelete: "CASCADE" });
   };
 
   return TrackedDay;

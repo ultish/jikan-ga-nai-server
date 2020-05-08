@@ -1,7 +1,7 @@
-import jwt from 'jsonwebtoken';
-import { AuthenticationError, UserInputError } from 'apollo-server';
-import { combineResolvers } from 'graphql-resolvers';
-import { isAdmin } from './authorization';
+import jwt from "jsonwebtoken";
+import { AuthenticationError, UserInputError } from "apollo-server";
+import { combineResolvers } from "graphql-resolvers";
+import { isAdmin } from "./authorization";
 
 const createToken = async (user, secret, expiresIn) => {
   const { id, email, username, role } = user;
@@ -38,21 +38,21 @@ export default {
         email,
       });
       return {
-        token: createToken(user, secret, '1yr'),
+        token: createToken(user, secret, "1yr"),
         user: user,
       };
     },
     signIn: async (parent, { login, password }, { models, secret }) => {
       const user = await models.User.findByLogin(login);
       if (!user) {
-        throw new UserInputError('No user found with this login credentials.');
+        throw new UserInputError("No user found with this login credentials.");
       }
       const isValid = await user.validatePassword(password);
       if (!isValid) {
-        throw new AuthenticationError('Invalid password');
+        throw new AuthenticationError("Invalid password");
       }
       return {
-        token: createToken(user, secret, '1yr'),
+        token: createToken(user, secret, "1yr"),
         user: user,
       };
     },

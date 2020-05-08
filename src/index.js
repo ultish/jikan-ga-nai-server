@@ -1,21 +1,21 @@
-import express from 'express';
-import jwt from 'jsonwebtoken';
-import { ApolloServer, AuthenticationError } from 'apollo-server-express';
-import http from 'http';
-import DataLoader from 'dataloader';
-import loaders from './loaders';
+import express from "express";
+import jwt from "jsonwebtoken";
+import { ApolloServer, AuthenticationError } from "apollo-server-express";
+import http from "http";
+import DataLoader from "dataloader";
+import loaders from "./loaders";
 
 // must import this before any uses of process.ENV
-import 'dotenv/config';
+import "dotenv/config";
 
-import schema from './schema';
-import resolvers from './resolvers';
-import models, { sequelize } from './models';
+import schema from "./schema";
+import resolvers from "./resolvers";
+import models, { sequelize } from "./models";
 
-import cors from 'cors';
+import cors from "cors";
 
 const getMe = async (req) => {
-  const token = req.headers['x-token'];
+  const token = req.headers["x-token"];
 
   // console.log('Headers', req.headers);
 
@@ -24,7 +24,7 @@ const getMe = async (req) => {
       return await jwt.verify(token, process.env.SECRET);
     } catch (e) {
       console.log(e);
-      throw new AuthenticationError('Your session expired. Sign in again.');
+      throw new AuthenticationError("Your session expired. Sign in again.");
     }
   }
 };
@@ -63,33 +63,33 @@ const server = new ApolloServer({
     }
   },
 });
-server.applyMiddleware({ app, path: '/graphql' });
+server.applyMiddleware({ app, path: "/graphql" });
 
 const httpServer = http.createServer(app);
 server.installSubscriptionHandlers(httpServer);
 
 // Warning: turning this on will clear your DB
-const eraseDatabaseOnSync = true;
+const eraseDatabaseOnSync = false;
 
 sequelize.sync({ force: eraseDatabaseOnSync }).then(async () => {
   if (eraseDatabaseOnSync) {
     createUsersWithMessages(new Date());
   }
   httpServer.listen({ port: 8000 }, () => {
-    console.log('Apollo Server on http://localhost:8000/graphql');
+    console.log("Apollo Server on http://localhost:8000/graphql");
   });
 });
 
 const createUsersWithMessages = async (date) => {
   await models.User.create(
     {
-      username: 'test',
-      email: 'test@world.com',
-      password: 'password',
-      role: 'ADMIN',
+      username: "test",
+      email: "test@world.com",
+      password: "password",
+      role: "ADMIN",
       messages: [
         {
-          text: 'Published the Road to learn React',
+          text: "Published the Road to learn React",
           createdAt: date.setSeconds(date.getSeconds() + 1),
         },
       ],
@@ -100,17 +100,17 @@ const createUsersWithMessages = async (date) => {
   );
   await models.User.create(
     {
-      username: 'jxhui',
-      email: 'hello@world.com',
-      password: 'password',
-      role: 'ADMIN',
+      username: "jxhui",
+      email: "hello@world.com",
+      password: "password",
+      role: "ADMIN",
       messages: [
         {
-          text: 'Happy to release...',
+          text: "Happy to release...",
           createdAt: date.setSeconds(date.getSeconds() + 1),
         },
         {
-          text: 'Published a complete...',
+          text: "Published a complete...",
           createdAt: date.setSeconds(date.getSeconds() + 1),
         },
       ],

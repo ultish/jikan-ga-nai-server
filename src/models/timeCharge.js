@@ -1,5 +1,5 @@
 const timeCharge = (sequelize, DataTypes) => {
-  const TimeCharge = sequelize.define('timecharge', {
+  const TimeCharge = sequelize.define("timecharge", {
     date: {
       type: DataTypes.DATE,
       allowNull: false,

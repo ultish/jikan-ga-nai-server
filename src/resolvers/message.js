@@ -1,13 +1,13 @@
-import uuidv4 from 'uuid/v4';
-import { ForbiddenError } from 'apollo-server';
-import { combineResolvers } from 'graphql-resolvers';
-import { isAuthenticated, isMessageOwner } from './authorization';
-import Sequelize from 'sequelize';
-import pubsub, { EVENTS } from '../subscriptions';
+import uuidv4 from "uuid/v4";
+import { ForbiddenError } from "apollo-server";
+import { combineResolvers } from "graphql-resolvers";
+import { isAuthenticated, isMessageOwner } from "./authorization";
+import Sequelize from "sequelize";
+import pubsub, { EVENTS } from "../subscriptions";
 
-export const toCursorHash = (string) => Buffer.from(string).toString('base64');
+export const toCursorHash = (string) => Buffer.from(string).toString("base64");
 export const fromCursorHash = (string) =>
-  Buffer.from(string, 'base64').toString('ascii');
+  Buffer.from(string, "base64").toString("ascii");
 
 export default {
   Query: {
@@ -24,7 +24,7 @@ export default {
           }
         : {};
       const messages = await models.Message.findAll({
-        order: [['createdAt', 'DESC']],
+        order: [["createdAt", "DESC"]],
         limit: limit + 1,
         ...cursorOptions,
       });

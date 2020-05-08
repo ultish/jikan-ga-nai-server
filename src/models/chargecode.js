@@ -1,5 +1,5 @@
 const chargecode = (sequelize, DataTypes) => {
-  const ChargeCode = sequelize.define('chargecode', {
+  const ChargeCode = sequelize.define("chargecode", {
     name: {
       type: DataTypes.STRING,
       unique: true,
@@ -26,7 +26,7 @@ const chargecode = (sequelize, DataTypes) => {
   });
 
   ChargeCode.associate = (models) => {
-    ChargeCode.belongsToMany(models.TrackedTask, { through: 'taskcodes' });
+    ChargeCode.belongsToMany(models.TrackedTask, { through: "taskcodes" });
   };
 
   return ChargeCode;

@@ -1,7 +1,7 @@
-import { gql } from 'apollo-server-express';
-import userSchema from './user';
-import messageSchema from './message';
-import trackerSchema from './tracker';
+import { gql } from "apollo-server-express";
+import userSchema from "./user";
+import messageSchema from "./message";
+import trackerSchema from "./tracker";
 const linkSchema = gql`
   scalar Date
 

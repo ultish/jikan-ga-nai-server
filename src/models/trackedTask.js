@@ -1,16 +1,16 @@
 const trackedTask = (sequelize, DataTypes) => {
-  const TrackedTask = sequelize.define('trackedtask', {
+  const TrackedTask = sequelize.define("trackedtask", {
     notes: {
       type: DataTypes.STRING,
     },
     overtimeEnabled: {
-      type: DataTypes.BOOLEAN
-    }
+      type: DataTypes.BOOLEAN,
+    },
   });
 
   TrackedTask.associate = (models) => {
-    TrackedTask.hasMany(models.TimeBlock, { onDelete: 'CASCADE' });
-    TrackedTask.belongsToMany(models.ChargeCode, { through: 'taskcodes' });
+    TrackedTask.hasMany(models.TimeBlock, { onDelete: "CASCADE" });
+    TrackedTask.belongsToMany(models.ChargeCode, { through: "taskcodes" });
     TrackedTask.belongsTo(models.TrackedDay);
     // TrackedTask.belongsTo(models.Timesheet);
   };

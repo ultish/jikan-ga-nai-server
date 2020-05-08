@@ -1,6 +1,6 @@
 const timeBlock = (sequelize, DataTypes) => {
   const TimeBlock = sequelize.define(
-    'timeblock',
+    "timeblock",
     {
       startTime: {
         type: DataTypes.DATE,
@@ -12,7 +12,7 @@ const timeBlock = (sequelize, DataTypes) => {
       indexes: [
         {
           unique: true,
-          fields: ['startTime', 'trackedtaskId'],
+          fields: ["startTime", "trackedtaskId"],
         },
       ],
     }

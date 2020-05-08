@@ -1,7 +1,7 @@
-import { PubSub } from 'apollo-server';
+import { PubSub } from "apollo-server";
 
-import * as MESSAGE_EVENTS from './message';
-import * as TRACKER_EVENTS from './tracker';
+import * as MESSAGE_EVENTS from "./message";
+import * as TRACKER_EVENTS from "./tracker";
 
 export const EVENTS = {
   MESSAGE: MESSAGE_EVENTS,

@@ -3,6 +3,9 @@ const trackedTask = (sequelize, DataTypes) => {
     notes: {
       type: DataTypes.STRING,
     },
+    overtimeEnabled: {
+      type: DataTypes.BOOLEAN
+    }
   });
 
   TrackedTask.associate = (models) => {

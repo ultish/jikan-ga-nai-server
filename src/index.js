@@ -71,6 +71,10 @@ server.installSubscriptionHandlers(httpServer);
 // Warning: turning this on will clear your DB
 const eraseDatabaseOnSync = false;
 
+sequelize.beforeSync((obj) => {
+  debugger;
+});
+
 sequelize.sync({ force: eraseDatabaseOnSync }).then(async () => {
   if (eraseDatabaseOnSync) {
     createUsersWithMessages(new Date());

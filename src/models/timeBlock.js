@@ -14,6 +14,9 @@ const timeBlock = (sequelize, DataTypes) => {
           unique: true,
           fields: ["startTime", "trackedtaskId"],
         },
+        {
+          fields: ["trackedtaskId"],
+        },
       ],
     }
   );

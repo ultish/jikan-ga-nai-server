@@ -45,11 +45,12 @@ const getTrackedDay = async (trackedDayId, models, me) => {
   }
 };
 
+// TODO convert trackedTask to trackedTaskId or pass trackedDay in
 const updateTimesheetCodeChanges = async (
   models,
-  trackedTask,
-  previousChargeCodes,
-  newChargeCodes
+  trackedDay,
+  previousChargeCodes
+  // newChargeCodes
 ) => {
   /*
   when code changes for a task, we need to wipe all TimeCharged for
@@ -63,10 +64,10 @@ const updateTimesheetCodeChanges = async (
   */
 
   // const timesheet = await models.Timesheet.findByPk(trackedTask.timesheetId);
-  const trackedDay = await models.TrackedDay.findByPk(trackedTask.trackeddayId);
+  // const trackedDay = await models.TrackedDay.findByPk(trackedTask.trackeddayId);
 
   const previousChargeCodeIds = previousChargeCodes.map((cc) => cc.id);
-  const newChargeCodeIds = newChargeCodes.map((cc) => cc.id);
+  // const newChargeCodeIds = newChargeCodes.map((cc) => cc.id);
 
   // fetch all trackedTasks for this day
   const allTrackedTasks = await models.TrackedTask.findAll({
@@ -539,11 +540,14 @@ export default {
         await trackedTask.save();
 
         if (codesChanged) {
+          const trackedDay = await models.TrackedDay.findByPk(
+            trackedTask.trackeddayId
+          );
           await updateTimesheetCodeChanges(
             models,
-            trackedTask,
-            previousChargeCodes,
-            chargeCodes
+            trackedDay,
+            previousChargeCodes
+            // chargeCodes
           );
         }
 
@@ -664,19 +668,20 @@ export default {
       isAuthenticated,
       isTrackedTaskOwner,
       async (parent, { id }, { models }) => {
-        const previousChargeCodes = await trackedTaskChargeCodes(
-          models,
-          trackedTask.id
+        const previousChargeCodes = await trackedTaskChargeCodes(models, id);
+
+        const trackedTask = await models.TrackedTask.findByPk(id);
+        const trackedDay = await models.TrackedDay.findByPk(
+          trackedTask.trackeddayId
         );
 
         const result = await models.TrackedTask.destroy({ where: { id } });
 
-        // TODO
         await updateTimesheetCodeChanges(
           models,
-          trackedTask,
-          previousChargeCodes,
-          []
+          trackedDay,
+          previousChargeCodes
+          // []
         );
 
         if (result) {

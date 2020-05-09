@@ -1,20 +1,33 @@
 const trackedDay = (sequelize, DataTypes) => {
-  const TrackedDay = sequelize.define("trackedday", {
-    date: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      validate: {
-        notEmpty: true,
+  const TrackedDay = sequelize.define(
+    "trackedday",
+    {
+      date: {
+        type: DataTypes.DATE,
+        allowNull: false,
+        validate: {
+          notEmpty: true,
+        },
+      },
+      mode: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        validate: {
+          notEmpty: true,
+        },
       },
     },
-    mode: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      validate: {
-        notEmpty: true,
-      },
-    },
-  });
+    {
+      indexes: [
+        {
+          fields: ["userId"],
+        },
+        {
+          fields: ["timesheetId"],
+        },
+      ],
+    }
+  );
 
   TrackedDay.associate = (models) => {
     TrackedDay.hasMany(models.TrackedTask, { onDelete: "CASCADE" });

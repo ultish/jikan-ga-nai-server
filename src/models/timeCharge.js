@@ -1,14 +1,32 @@
 const timeCharge = (sequelize, DataTypes) => {
-  const TimeCharge = sequelize.define("timecharge", {
-    date: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      validate: { notEmpty: true },
+  const TimeCharge = sequelize.define(
+    "timecharge",
+    {
+      date: {
+        type: DataTypes.DATE,
+        allowNull: false,
+        validate: { notEmpty: true },
+      },
+      value: {
+        type: DataTypes.DOUBLE,
+      },
     },
-    value: {
-      type: DataTypes.DOUBLE,
-    },
-  });
+    {
+      indexes: [
+        {
+          fields: ["trackeddayId"],
+        },
+
+        {
+          fields: ["timesheetId"],
+        },
+
+        {
+          fields: ["chargecodeId"],
+        },
+      ],
+    }
+  );
 
   TimeCharge.associate = (models) => {
     TimeCharge.belongsTo(models.ChargeCode);

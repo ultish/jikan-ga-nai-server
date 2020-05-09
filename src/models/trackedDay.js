@@ -5,6 +5,7 @@ const trackedDay = (sequelize, DataTypes) => {
       date: {
         type: DataTypes.DATE,
         allowNull: false,
+        unique: true,
         validate: {
           notEmpty: true,
         },

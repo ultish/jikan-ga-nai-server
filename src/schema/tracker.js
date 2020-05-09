@@ -72,7 +72,7 @@ export default gql`
     timesheet(trackedDayId: ID!): Timesheet
   }
   extend type Mutation {
-    createTrackedDay(date: Float!, mode: DayMode): TrackedDay!
+    createTrackedDay(date: Float!, mode: DayMode!): TrackedDay!
     createTrackedTask(
       trackedDayId: ID!
       notes: String

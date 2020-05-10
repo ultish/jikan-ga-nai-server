@@ -10,6 +10,9 @@ const timeCharge = (sequelize, DataTypes) => {
       value: {
         type: DataTypes.DOUBLE,
       },
+      mode: {
+        type: DataTypes.STRING,
+      },
     },
     {
       indexes: [

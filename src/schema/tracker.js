@@ -21,6 +21,7 @@ export default gql`
     date: Float!
     chargeCode: ChargeCode!
     value: Float!
+    mode: DayMode
   }
   type TrackedDay {
     id: ID!

@@ -22,9 +22,9 @@ const TIMEBLOCK_DURATION = 15;
 
 const timeChargeLock = new AsyncLock();
 
-const calculateEndCursor = (edges) => {
+const calculateEndCursor = (edges, field = "createdAt") => {
   if (edges && edges.length) {
-    return toCursorHash(edges[edges.length - 1].createdAt.getTime().toString());
+    return toCursorHash(edges[edges.length - 1][field].getTime().toString());
   } else {
     return "";
   }
@@ -343,7 +343,7 @@ export default {
       const cursorOptions = cursor
         ? {
             where: {
-              createdAt: {
+              date: {
                 [Sequelize.Op.lt]: new Date(
                   Number.parseInt(fromCursorHash(cursor))
                 ),
@@ -370,7 +370,7 @@ export default {
         edges: edges,
         pageInfo: {
           hasNextPage,
-          endCursor: calculateEndCursor(edges),
+          endCursor: calculateEndCursor(edges, "date"),
         },
       };
     },

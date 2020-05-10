@@ -69,7 +69,7 @@ const httpServer = http.createServer(app);
 server.installSubscriptionHandlers(httpServer);
 
 // Warning: turning this on will clear your DB
-const eraseDatabaseOnSync = true;
+const eraseDatabaseOnSync = false;
 
 sequelize.beforeSync((obj) => {
   debugger;

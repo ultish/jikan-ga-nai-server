@@ -358,7 +358,7 @@ export default {
           };
 
       const trackedDays = await models.TrackedDay.findAll({
-        order: [["createdAt", "DESC"]],
+        order: [["date", "DESC"]],
         limit: limit + 1,
         ...cursorOptions,
       });

@@ -278,17 +278,9 @@ const updateTimesheet = async (
 
           let toIncrementForTask;
           if (timeBlockIdForTask === timeBlock.id) {
-            if (increment) {
-              toIncrementForTask = true;
-            } else {
-              toIncrementForTask = false;
-            }
+            toIncrementForTask = increment;
           } else {
-            if (increment) {
-              toIncrementForTask = false;
-            } else {
-              toIncrementForTask = true;
-            }
+            toIncrementForTask = !increment;
           }
 
           // get the chargecodes
@@ -308,15 +300,6 @@ const updateTimesheet = async (
             } else {
               timeCharge.value -= valuePerChargeCode;
             }
-
-            // if (increment) {
-            //   timeChargeMap[chargeCodeId].value += valuePerChargeCode;
-            // } else {
-            //   timeChargeMap[chargeCodeId].value = Math.max(
-            //     0,
-            //     timeChargeMap[chargeCodeId].value - valuePerChargeCode
-            //   );
-            // }
           });
         });
 
@@ -339,22 +322,22 @@ const updateTimesheet = async (
         //   timeCharge.value = Math.max(0, timeCharge.value + toIncrement);
         //   await timeCharge.save();
         // }
-      } else {
-        // TODO nope, timeCharges are not specific to timeBlocks, they cover all tasks for the day
-
-        // in a situation where the last timeblock for any chargecode has been deselected
-        debugger;
-        const toReset = await models.TimeCharge.findAll({
-          where: {
-            trackeddayId: trackedDay.id,
-            date: timeBlockDate,
-          },
-        });
-        // debugger;
-        // for (let timeCharge of toReset) {
-        //   timeCharge.value = 0;
-        //   await timeCharge.save();
-        // }
+        // } else {
+        //   // TODO nope, timeCharges are not specific to timeBlocks, they cover all tasks for the day
+        //
+        //   // in a situation where the last timeblock for any chargecode has been deselected
+        //   debugger;
+        //   const toReset = await models.TimeCharge.findAll({
+        //     where: {
+        //       trackeddayId: trackedDay.id,
+        //       date: timeBlockDate,
+        //     },
+        //   });
+        //   // debugger;
+        //   // for (let timeCharge of toReset) {
+        //   //   timeCharge.value = 0;
+        //   //   await timeCharge.save();
+        //   // }
       }
 
       pubsub.publish(EVENTS.TRACKER.UPDATED_TIMESHEET, {

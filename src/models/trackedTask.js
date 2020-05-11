@@ -14,15 +14,21 @@ const trackedTask = (sequelize, DataTypes) => {
         {
           fields: ["trackeddayId"],
         },
+        {
+          fields: ["userId"],
+        },
       ],
     }
   );
 
   TrackedTask.associate = (models) => {
-    TrackedTask.hasMany(models.TimeBlock, { onDelete: "CASCADE" });
+    TrackedTask.hasMany(models.TimeBlock);
     TrackedTask.belongsToMany(models.ChargeCode, { through: "taskcodes" });
-    TrackedTask.belongsTo(models.TrackedDay);
-    // TrackedTask.belongsTo(models.Timesheet);
+    TrackedTask.belongsTo(models.TrackedDay, {
+      onDelete: "CASCADE",
+      hook: true,
+    });
+    TrackedTask.belongsTo(models.User);
   };
 
   return TrackedTask;

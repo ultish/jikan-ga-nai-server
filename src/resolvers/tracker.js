@@ -1,4 +1,5 @@
-import Sequelize from "sequelize";
+import Sequelize, { QueryTypes } from "sequelize";
+
 import { combineResolvers } from "graphql-resolvers";
 import {
   isAuthenticated,
@@ -14,8 +15,10 @@ import chargecode from "../models/chargecode";
 import { toCursorHash, fromCursorHash } from "./message";
 
 import moment from "moment";
+import _ from "lodash";
 
 import AsyncLock from "async-lock";
+import { sequelize } from "../models";
 
 // how many minutes each time block represents
 const TIMEBLOCK_DURATION = 15;
@@ -45,12 +48,10 @@ const getTrackedDay = async (trackedDayId, models, me) => {
   }
 };
 
-// TODO convert trackedTask to trackedTaskId or pass trackedDay in
 const updateTimesheetCodeChanges = async (
   models,
   trackedDay,
   previousChargeCodes
-  // newChargeCodes
 ) => {
   /*
   when code changes for a task, we need to wipe all TimeCharged for
@@ -63,9 +64,6 @@ const updateTimesheetCodeChanges = async (
   call fetchTimeCharges() to re-create the timeCharge instances
   */
 
-  // const timesheet = await models.Timesheet.findByPk(trackedTask.timesheetId);
-  // const trackedDay = await models.TrackedDay.findByPk(trackedTask.trackeddayId);
-
   const previousChargeCodeIds = previousChargeCodes.map((cc) => cc.id);
   // const newChargeCodeIds = newChargeCodes.map((cc) => cc.id);
 
@@ -75,6 +73,8 @@ const updateTimesheetCodeChanges = async (
       trackeddayId: trackedDay.id,
     },
   });
+
+  // TODO this doesn't work with overlapping time blocks!
 
   // find all chargecode IDs used by the trackedTasks for this day
   const trackedTaskChargeCodeIds = await models.ChargeCode.findAll({
@@ -166,8 +166,10 @@ const updateTimesheetCodeChanges = async (
  */
 const updateTimesheet = async (
   models,
+  me,
   trackedDay,
   trackedTask,
+  timeBlock,
   increment = true
 ) => {
   // find the timesheet first
@@ -180,34 +182,179 @@ const updateTimesheet = async (
 
   if (timesheet) {
     // get the 'timecharged' lock
-    timeChargeLock.acquire("timecharged", async () => {
-      const chargeCodes = await trackedTaskChargeCodes(models, trackedTask.id, [
-        "id",
-      ]);
+    await timeChargeLock.acquire("timecharged", async () => {
+      // const chargeCodes = await trackedTaskChargeCodes(models, trackedTask.id, [
+      //   "id",
+      // ]);
 
-      if (chargeCodes.length) {
+      const timeBlockDate = timeBlock.startTime;
+
+      // for a given date of the timeBlock, we can have overlapping timeBlocks.
+      // this affects the amount each block increments/decrements for all
+      // timeCharges at this time slot
+
+      // fetch timeBlocks for a given date
+      const timeBlocksAtSameTime = await models.TimeBlock.findAll({
+        attributes: ["id", "trackedtaskId"],
+        where: {
+          startTime: timeBlockDate,
+          userId: me.id,
+        },
+      });
+      debugger;
+
+      const trackedTaskIds = _.uniq(
+        timeBlocksAtSameTime.map((tb) => tb.trackedtaskId)
+      );
+      debugger;
+
+      let trackedTasks = [];
+      if (trackedTaskIds.length) {
+        // fetch tracked tasks. Will determine total weight of the timeBlock for all tasks involved.
+        trackedTasks = await models.TrackedTask.findAll({
+          where: {
+            id: trackedTaskIds, // sequelize v5 doesn't need [Sequelize.Op.in]
+          },
+        });
+      }
+
+      const trackedTaskToTimeBlockMap = {};
+      timeBlocksAtSameTime.forEach(
+        (tb) => (trackedTaskToTimeBlockMap[tb.trackedtaskId] = tb.id)
+      );
+
+      const blockWeightPerTask = TIMEBLOCK_DURATION / trackedTaskIds.length;
+
+      // TODO trackedTaskIds can be empty
+      // fetch charge code ids for each tracked task. Will determine weight of timeBlock for a single task
+      let tasksToChargeCodes = [];
+      if (trackedTaskIds.length) {
+        tasksToChargeCodes = await sequelize.query(
+          'select "trackedtaskId", "chargecodeId" from taskcodes where "trackedtaskId" in ( :ids )',
+          {
+            replacements: {
+              ids: trackedTaskIds,
+            },
+            type: QueryTypes.SELECT,
+          }
+        );
+      }
+
+      // this map will tell us how much each chargecode is worth within a given task
+      let chargeCodesForTimeSlot = [];
+      const tasksToChargeCodesMap = new Map();
+      tasksToChargeCodes.forEach((data) => {
+        let values = tasksToChargeCodesMap.get(data.trackedtaskId) ?? [];
+        values.push(data.chargecodeId);
+        tasksToChargeCodesMap.set(data.trackedtaskId, values);
+        chargeCodesForTimeSlot.push(data.chargecodeId);
+      });
+      chargeCodesForTimeSlot = _.uniq(chargeCodesForTimeSlot);
+      debugger;
+
+      // create map
+
+      if (chargeCodesForTimeSlot.length) {
         // not creating any ChargedTime without charge codes
         const timeCharges = await fetchTimeCharges(
           models,
           trackedDay,
           timesheet.id,
-          chargeCodes.map((cc) => cc.id)
+          chargeCodesForTimeSlot
         );
+        debugger;
+        const timeChargeMap = {};
+        timeCharges.forEach((tc) => (timeChargeMap[tc.chargecodeId] = tc));
 
-        // for each timeCharges, add a bit of time
-        let toIncrement = TIMEBLOCK_DURATION / timeCharges.length;
-        if (!increment) {
-          toIncrement = toIncrement * -1;
+        if (!trackedTasks.length) {
+          // there are no tracked tasks, timeCharge must be 0 now
         }
-        for (let timeCharge of timeCharges) {
-          console.log(
-            "TIMECHARGE: ",
-            timeCharge.chargecodeId,
-            timeCharge.value + toIncrement
+        // loop through each task on this time slot
+        trackedTasks.forEach((trackedTaskForTimeSlot) => {
+          debugger;
+
+          const timeBlockIdForTask =
+            trackedTaskToTimeBlockMap[trackedTaskForTimeSlot.id];
+
+          let toIncrementForTask;
+          if (timeBlockIdForTask === timeBlock.id) {
+            if (increment) {
+              toIncrementForTask = true;
+            } else {
+              toIncrementForTask = false;
+            }
+          } else {
+            if (increment) {
+              toIncrementForTask = false;
+            } else {
+              toIncrementForTask = true;
+            }
+          }
+
+          // get the chargecodes
+          const chargeCodesForTask = tasksToChargeCodesMap.get(
+            trackedTaskForTimeSlot.id
           );
-          timeCharge.value = Math.max(0, timeCharge.value + toIncrement);
+
+          const valuePerChargeCode =
+            blockWeightPerTask / chargeCodesForTask.length;
+
+          chargeCodesForTask.forEach((chargeCodeId) => {
+            debugger;
+            const timeCharge = timeChargeMap[chargeCodeId];
+
+            if (toIncrementForTask) {
+              timeCharge.value += valuePerChargeCode;
+            } else {
+              timeCharge.value -= valuePerChargeCode;
+            }
+
+            // if (increment) {
+            //   timeChargeMap[chargeCodeId].value += valuePerChargeCode;
+            // } else {
+            //   timeChargeMap[chargeCodeId].value = Math.max(
+            //     0,
+            //     timeChargeMap[chargeCodeId].value - valuePerChargeCode
+            //   );
+            // }
+          });
+        });
+
+        for (let timeCharge of timeCharges) {
           await timeCharge.save();
         }
+        // TODO this doesn't work with overlapping times!
+
+        // for each timeCharges, add a bit of time
+        // let toIncrement = TIMEBLOCK_DURATION / timeCharges.length;
+        // if (!increment) {
+        //   toIncrement = toIncrement * -1;
+        // }
+        // for (let timeCharge of timeCharges) {
+        //   console.log(
+        //     "TIMECHARGE: ",
+        //     timeCharge.chargecodeId,
+        //     timeCharge.value + toIncrement
+        //   );
+        //   timeCharge.value = Math.max(0, timeCharge.value + toIncrement);
+        //   await timeCharge.save();
+        // }
+      } else {
+        // TODO nope, timeCharges are not specific to timeBlocks, they cover all tasks for the day
+
+        // in a situation where the last timeblock for any chargecode has been deselected
+        debugger;
+        const toReset = await models.TimeCharge.findAll({
+          where: {
+            trackeddayId: trackedDay.id,
+            date: timeBlockDate,
+          },
+        });
+        // debugger;
+        // for (let timeCharge of toReset) {
+        //   timeCharge.value = 0;
+        //   await timeCharge.save();
+        // }
       }
 
       pubsub.publish(EVENTS.TRACKER.UPDATED_TIMESHEET, {
@@ -487,6 +634,7 @@ export default {
           const trackedTask = await models.TrackedTask.create({
             notes,
             trackeddayId: trackedDay.id,
+            userId: me.id,
           });
 
           if (chargeCodeIds) {
@@ -602,9 +750,16 @@ export default {
               trackedtaskId: trackedTaskId,
               startTime,
               minutes,
+              userId: me.id,
             });
 
-            await updateTimesheet(models, trackedDay, trackedTask);
+            await updateTimesheet(
+              models,
+              me,
+              trackedDay,
+              trackedTask,
+              timeBlock
+            );
 
             return timeBlock;
           } else {
@@ -644,9 +799,11 @@ export default {
     ),
     deleteTimeBlock: combineResolvers(
       isAuthenticated,
-      async (parent, { id }, { models }) => {
+      async (parent, { id }, { models, me }) => {
         const timeBlock = await models.TimeBlock.findByPk(id);
         if (timeBlock) {
+          debugger;
+
           const trackedTask = await models.TrackedTask.findByPk(
             timeBlock.trackedtaskId
           );
@@ -654,7 +811,14 @@ export default {
             trackedTask.trackeddayId
           );
 
-          await updateTimesheet(models, trackedDay, trackedTask, false);
+          await updateTimesheet(
+            models,
+            me,
+            trackedDay,
+            trackedTask,
+            timeBlock,
+            false
+          );
 
           const result = await models.TimeBlock.destroy({ where: { id } });
           if (result) {

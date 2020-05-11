@@ -17,12 +17,19 @@ const timeBlock = (sequelize, DataTypes) => {
         {
           fields: ["trackedtaskId"],
         },
+        {
+          fields: ["userId"],
+        },
       ],
     }
   );
 
   TimeBlock.associate = (models) => {
-    TimeBlock.belongsTo(models.TrackedTask);
+    TimeBlock.belongsTo(models.TrackedTask, {
+      onDelete: "CASCADE",
+      hook: true,
+    });
+    TimeBlock.belongsTo(models.User);
   };
   return TimeBlock;
 };

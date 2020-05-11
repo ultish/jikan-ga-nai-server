@@ -27,12 +27,20 @@ const timeCharge = (sequelize, DataTypes) => {
         {
           fields: ["chargecodeId"],
         },
+        {
+          fields: ["date"],
+        },
       ],
     }
   );
 
   TimeCharge.associate = (models) => {
     TimeCharge.belongsTo(models.ChargeCode);
+    TimeCharge.belongsTo(models.Timesheet, { onDelete: "CASCADE", hook: true });
+    TimeCharge.belongsTo(models.TrackedDay, {
+      onDelete: "CASCADE",
+      hook: true,
+    });
   };
 
   return TimeCharge;

@@ -23,6 +23,7 @@
     "graphql-iso-date": "^3.6.1",
     "graphql-resolvers": "^0.4.2",
     "jsonwebtoken": "^8.5.1",
+    "lodash": "^4.17.15",
     "moment": "^2.25.1",
     "pg": "^7.18.2",
     "sequelize": "^5.21.5",

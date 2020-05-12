@@ -27,7 +27,7 @@ const timeBlock = (sequelize, DataTypes) => {
   TimeBlock.associate = (models) => {
     TimeBlock.belongsTo(models.TrackedTask, {
       onDelete: "CASCADE",
-      hook: true,
+      hooks: true,
     });
     TimeBlock.belongsTo(models.User);
   };

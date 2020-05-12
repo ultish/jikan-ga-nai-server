@@ -17,7 +17,7 @@ const message = (sequelize, DataTypes) => {
   );
 
   Message.associate = (models) => {
-    Message.belongsTo(models.User, { onDelete: "CASCADE", hook: true });
+    Message.belongsTo(models.User);
   };
 
   return Message;

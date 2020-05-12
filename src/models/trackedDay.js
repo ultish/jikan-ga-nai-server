@@ -31,9 +31,12 @@ const trackedDay = (sequelize, DataTypes) => {
   );
 
   TrackedDay.associate = (models) => {
-    TrackedDay.hasMany(models.TrackedTask);
-    TrackedDay.belongsTo(models.User, { onDelete: "CASCADE", hook: true });
-    TrackedDay.hasMany(models.TimeCharge);
+    TrackedDay.hasMany(models.TrackedTask, {
+      onDelete: "CASCADE",
+      hooks: true,
+    });
+    TrackedDay.belongsTo(models.User);
+    TrackedDay.hasMany(models.TimeCharge, { onDelete: "CASCADE", hooks: true });
   };
 
   return TrackedDay;

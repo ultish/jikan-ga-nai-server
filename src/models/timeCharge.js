@@ -36,11 +36,8 @@ const timeCharge = (sequelize, DataTypes) => {
 
   TimeCharge.associate = (models) => {
     TimeCharge.belongsTo(models.ChargeCode);
-    TimeCharge.belongsTo(models.Timesheet, { onDelete: "CASCADE", hook: true });
-    TimeCharge.belongsTo(models.TrackedDay, {
-      onDelete: "CASCADE",
-      hook: true,
-    });
+    TimeCharge.belongsTo(models.Timesheet);
+    TimeCharge.belongsTo(models.TrackedDay);
   };
 
   return TimeCharge;

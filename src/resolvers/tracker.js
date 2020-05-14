@@ -59,36 +59,53 @@ const updateTimesheetCodeChanges = async (models, me, trackedDay) => {
 
   debugger;
 
-  // fetch all tracked task IDs for this day
-  const trackedTasksForDay = await models.TrackedTask.findAll({
-    attributes: ["id"],
+  // fetch all tracked days for this timesheet
+  const trackedDaysForTimesheet = await models.TrackedDay.findAll({
     where: {
-      trackeddayId: trackedDay.id,
-    },
-  });
-  const trackedTasksIds = trackedTasksForDay.map((tt) => tt.id);
-
-  // find all time blocks for the day
-  const allTimeBlocksForTasks = await models.TimeBlock.findAll({
-    attributes: ["id", "startTime"],
-    where: {
-      trackedtaskId: trackedTasksIds,
+      timesheetId: timesheet.id,
     },
   });
 
-  // sort and uniq TimeBlocks on the startTime, we don't care about
-  // overlapping times as updateTimesheet will deal with them
-  const sortedTimeBlocks = _.sortBy(allTimeBlocksForTasks, (tb) =>
-    tb.startTime.valueOf()
-  );
-  const uniqueTimeBlocks = _.sortedUniqBy(sortedTimeBlocks, (tb) =>
-    tb.startTime.valueOf()
-  );
+  for (let trackedDayForTimesheet of trackedDaysForTimesheet) {
+    // fetch all tracked task IDs for this day
+    const trackedTasksForDay = await models.TrackedTask.findAll({
+      attributes: ["id"],
+      where: {
+        trackeddayId: trackedDayForTimesheet.id,
+      },
+    });
+    const trackedTasksIds = trackedTasksForDay.map((tt) => tt.id);
 
-  debugger;
-  for (let timeBlock of uniqueTimeBlocks) {
-    await updateTimesheet(models, me, trackedDay, timeBlock, true, true);
+    // find all time blocks for the day
+    const allTimeBlocksForTasks = await models.TimeBlock.findAll({
+      attributes: ["id", "startTime"],
+      where: {
+        trackedtaskId: trackedTasksIds,
+      },
+    });
+
+    // sort and uniq TimeBlocks on the startTime, we don't care about
+    // overlapping times as updateTimesheet will deal with them
+    const sortedTimeBlocks = _.sortBy(allTimeBlocksForTasks, (tb) =>
+      tb.startTime.valueOf()
+    );
+    const uniqueTimeBlocks = _.sortedUniqBy(sortedTimeBlocks, (tb) =>
+      tb.startTime.valueOf()
+    );
+
+    debugger;
+    for (let timeBlock of uniqueTimeBlocks) {
+      await updateTimesheet(
+        models,
+        me,
+        trackedDayForTimesheet,
+        timeBlock,
+        true,
+        true
+      );
+    }
   }
+
   pubsub.publish(EVENTS.TRACKER.UPDATED_TIMESHEET, {
     timesheetUpdated: timesheet,
   });
@@ -118,7 +135,6 @@ const updateTimesheet = async (
   models,
   me,
   trackedDay,
-  // trackedTask,
   timeBlock,
   increment = true,
   reset = false
@@ -170,7 +186,25 @@ const updateTimesheet = async (
         (tb) => (trackedTaskToTimeBlockMap[tb.trackedtaskId] = tb.id)
       );
 
-      const blockWeightPerTask = TIMEBLOCK_DURATION / trackedTaskIds.length;
+      // when we delete timeBlocks, we destroy it *after* we run updateTimesheet (this function).
+      // So when we are decrementing, the newBlockWeightPerTask is no longer tied to
+      // trackedTaskIds.length directly
+      let newBlockWeightPerTask, oldBlockWeightPerTask;
+      if (increment) {
+        newBlockWeightPerTask = TIMEBLOCK_DURATION / trackedTaskIds.length;
+        oldBlockWeightPerTask =
+          TIMEBLOCK_DURATION / (trackedTaskIds.length - 1) ?? 0;
+      } else {
+        newBlockWeightPerTask =
+          TIMEBLOCK_DURATION / (trackedTaskIds.length - 1) ?? 0;
+        oldBlockWeightPerTask = TIMEBLOCK_DURATION / trackedTaskIds.length;
+      }
+
+      // this can be negative when incrementing
+      const blockWeightPerTaskDiff =
+        newBlockWeightPerTask - oldBlockWeightPerTask;
+
+      debugger;
 
       // TODO trackedTaskIds can be empty
       // fetch charge code ids for each tracked task. Will determine weight of timeBlock for a single task
@@ -197,9 +231,6 @@ const updateTimesheet = async (
         chargeCodesForTimeSlot.push(data.chargecodeId);
       });
       chargeCodesForTimeSlot = _.uniq(chargeCodesForTimeSlot);
-      debugger;
-
-      // create map
 
       if (chargeCodesForTimeSlot.length) {
         // not creating any ChargedTime without charge codes
@@ -209,49 +240,64 @@ const updateTimesheet = async (
           timesheet.id,
           chargeCodesForTimeSlot
         );
-        debugger;
+
         const timeChargeMap = {};
         timeCharges.forEach((tc) => (timeChargeMap[tc.chargecodeId] = tc));
 
-        if (!trackedTasks.length) {
-          // there are no tracked tasks, timeCharge must be 0 now
-        }
         // loop through each task on this time slot
         trackedTasks.forEach((trackedTaskForTimeSlot) => {
           debugger;
 
-          const timeBlockIdForTask =
-            trackedTaskToTimeBlockMap[trackedTaskForTimeSlot.id];
-
-          let toIncrementForTask;
-          if (reset) {
-            toIncrementForTask = true;
-          } else {
-            if (timeBlockIdForTask === timeBlock.id) {
-              toIncrementForTask = increment;
-            } else {
-              toIncrementForTask = !increment;
-            }
-          }
+          let valuePerChargeCode = 0;
 
           // get the chargecodes
-          const chargeCodesForTask = tasksToChargeCodesMap.get(
-            trackedTaskForTimeSlot.id
-          );
+          const chargeCodesForTask =
+            tasksToChargeCodesMap.get(trackedTaskForTimeSlot.id) ?? [];
 
-          const valuePerChargeCode =
-            blockWeightPerTask / chargeCodesForTask.length;
+          if (chargeCodesForTask.length) {
+            const timeBlockIdForTask =
+              trackedTaskToTimeBlockMap[trackedTaskForTimeSlot.id];
 
-          chargeCodesForTask.forEach((chargeCodeId) => {
             debugger;
-            const timeCharge = timeChargeMap[chargeCodeId];
-
-            if (toIncrementForTask) {
-              timeCharge.value += valuePerChargeCode;
+            let toIncrementForTask;
+            if (reset) {
+              // toIncrementForTask = true;
+              valuePerChargeCode =
+                newBlockWeightPerTask / chargeCodesForTask.length;
             } else {
-              timeCharge.value -= valuePerChargeCode;
+              // if this is the target block, then it behaves differently
+              if (timeBlockIdForTask === timeBlock.id) {
+                if (increment) {
+                  // adding targeted timeBlock
+                  valuePerChargeCode =
+                    newBlockWeightPerTask / chargeCodesForTask.length;
+                } else {
+                  // deleting targeted timeBlock
+                  valuePerChargeCode =
+                    (oldBlockWeightPerTask / chargeCodesForTask.length) * -1;
+                }
+              } else {
+                // other tasks in the same time slot as targeted timeBlock
+                if (increment) {
+                  // when we are incrementing, all other blocks will decrease value
+                  valuePerChargeCode =
+                    blockWeightPerTaskDiff / chargeCodesForTask.length;
+                } else {
+                  valuePerChargeCode =
+                    blockWeightPerTaskDiff / chargeCodesForTask.length;
+                }
+              }
+
+              debugger;
             }
-          });
+
+            chargeCodesForTask.forEach((chargeCodeId) => {
+              debugger;
+              const timeCharge = timeChargeMap[chargeCodeId];
+
+              timeCharge.value += valuePerChargeCode;
+            });
+          }
         });
 
         for (let timeCharge of timeCharges) {

@@ -20,17 +20,20 @@ export default gql`
     id: ID!
     date: Float!
     chargeCode: ChargeCode!
-    trackedTask: TrackedTask!
     value: Float!
-    mode: DayMode
   }
-  type TrackedDay {
+  type TimeSlotCharge {
+    id: ID!
+    chargeCode: ChargeCode!
+    value: Int!
+    timeSlot: TimeSlot!
+  }
+  type TimeSlot {
     id: ID!
     date: Float!
-    mode: DayMode!
-    tasks: [TrackedTask!]
-    user: User!
-    #    timeCharges: [TimeCharge!]
+    counter: Int!
+    timeBlocks: [TimeBlock!]
+    timeSlotCharges: [TimeSlotCharge!]
   }
   type TrackedTask {
     id: ID!
@@ -39,7 +42,15 @@ export default gql`
     timeBlocks: [TimeBlock!]
     createdAt: Float!
     overtimeEnabled: Boolean!
-    timeCharges: [TimeCharge!]
+    valuePerChargeCode: Int # counts value per ChargeCode eg 15/#chargeCodes
+    valueOfTask: Int # counts number of TimeBlocks for this task
+  }
+  type TrackedDay {
+    id: ID!
+    date: Float!
+    mode: DayMode!
+    tasks: [TrackedTask!]
+    user: User!
   }
   type ChargeCode {
     id: ID!
@@ -52,6 +63,7 @@ export default gql`
     id: ID!
     startTime: Float!
     minutes: Int
+    timeSlot: TimeSlot!
   }
   type TrackedDayPaginated {
     edges: [TrackedDay!]!

@@ -20,6 +20,7 @@ export default gql`
     id: ID!
     date: Float!
     chargeCode: ChargeCode!
+    trackedTask: TrackedTask!
     value: Float!
     mode: DayMode
   }
@@ -29,7 +30,7 @@ export default gql`
     mode: DayMode!
     tasks: [TrackedTask!]
     user: User!
-    timeCharges: [TimeCharge!]
+    #    timeCharges: [TimeCharge!]
   }
   type TrackedTask {
     id: ID!
@@ -38,6 +39,7 @@ export default gql`
     timeBlocks: [TimeBlock!]
     createdAt: Float!
     overtimeEnabled: Boolean!
+    timeCharges: [TimeCharge!]
   }
   type ChargeCode {
     id: ID!

@@ -427,154 +427,127 @@ const fetchTimesheet = async (models, me, trackedDayId) => {
 
 export default {
   Query: {
-    timesheet: async (parent, { trackedDayId }, { models, me }) => {
-      // fetch the tracked day first
-      return fetchTimesheet(models, me, trackedDayId);
-      // let trackedDay = await getTrackedDay(trackedDayId, models, me);
-      // if (trackedDay) {
-      //   // given this day, work out the week-ending
-      //   const date = moment(trackedDay.date);
-      //
-      //   let endOfWeek;
-      //   // TODO special case end of year and start of year scenarios
-      //   if (date.weekYear() !== date.year()) {
-      //     // endOfWeek becomes the last day of the year instead
-      //     endOfWeek = moment.endOf("year").startOf("day");
-      //   } else {
-      //     endOfWeek = date.clone().endOf("isoweek").startOf("day");
-      //   }
-      //
-      //   // find timesheet for this endOfWeek
-      //   let timesheet = await models.Timesheet.findAll({
-      //     where: {
-      //       weekEndingDate: endOfWeek.toDate(),
-      //     },
-      //     limit: 1,
-      //   });
-      //
-      //   if (!timesheet.length) {
-      //     // create it
-      //     timesheet = await models.Timesheet.create({
-      //       weekEndingDate: endOfWeek.toDate(),
-      //       userId: me.id,
-      //     });
-      //     // trackedDay.timesheetId = timesheet.id;
-      //     // trackedDay = await trackedDay.save();
-      //   } else {
-      //     timesheet = timesheet[0];
-      //   }
-      //   trackedDay.timesheetId = timesheet.id;
-      //   await trackedDay.save();
-      //   return timesheet;
-      // }
-      // return null;
-    },
+    timesheet: combineResolvers(
+      isAuthenticated,
+      async (parent, { trackedDayId }, { models, me }) => {
+        return fetchTimesheet(models, me, trackedDayId);
+      }
+    ),
+
     trackedDay: async (parent, { trackedDayId }, { models, me }) => {
       return await models.TrackedDay.findByPk(trackedDayId);
     },
 
-    trackedDays: async (parent, { cursor, limit = 100 }, { models, me }) => {
-      const cursorOptions = cursor
-        ? {
-            where: {
-              date: {
-                [Sequelize.Op.lt]: new Date(
-                  Number.parseInt(fromCursorHash(cursor))
-                ),
+    trackedDays: combineResolvers(
+      isAuthenticated,
+      async (parent, { cursor, limit = 100 }, { models, me }) => {
+        const cursorOptions = cursor
+          ? {
+              where: {
+                date: {
+                  [Sequelize.Op.lt]: new Date(
+                    Number.parseInt(fromCursorHash(cursor))
+                  ),
+                },
+                userId: me.id,
               },
-              userId: me.id,
-            },
-          }
-        : {
-            where: {
-              userId: me.id,
-            },
-          };
+            }
+          : {
+              where: {
+                userId: me.id,
+              },
+            };
 
-      const trackedDays = await models.TrackedDay.findAll({
-        order: [["date", "DESC"]],
-        limit: limit + 1,
-        ...cursorOptions,
-      });
+        const trackedDays = await models.TrackedDay.findAll({
+          order: [["date", "DESC"]],
+          limit: limit + 1,
+          ...cursorOptions,
+        });
+        const hasNextPage = trackedDays.length > limit;
+        const edges = hasNextPage ? trackedDays.slice(0, -1) : trackedDays;
 
-      const hasNextPage = trackedDays.length > limit;
-      const edges = hasNextPage ? trackedDays.slice(0, -1) : trackedDays;
+        return {
+          edges: edges,
+          pageInfo: {
+            hasNextPage,
+            endCursor: calculateEndCursor(edges, "date"),
+          },
+        };
+      }
+    ),
 
-      return {
-        edges: edges,
-        pageInfo: {
-          hasNextPage,
-          endCursor: calculateEndCursor(edges, "date"),
-        },
-      };
-    },
-
-    timeBlocks: async (parent, { trackedTaskId }, { models, me }) => {
-      return await models.TimeBlock.findAll({
-        where: {
-          trackedtaskId: trackedTaskId,
-        },
-      });
-    },
+    timeBlocks: combineResolvers(
+      isAuthenticated,
+      async (parent, { trackedTaskId }, { models, me }) => {
+        return await models.TimeBlock.findAll({
+          where: {
+            trackedtaskId: trackedTaskId,
+          },
+        });
+      }
+    ),
     chargeCodes: async (parent, {}, { models }) => {
       return await models.ChargeCode.findAll();
     },
-    trackedTasks: async (
-      parent,
-      { trackedDayId, cursor, limit = 1000 },
-      { models, me }
-    ) => {
-      const cursorOptions = cursor
-        ? {
-            where: {
-              createdAt: {
-                [Sequelize.Op.lt]: new Date(
-                  Number.parseInt(fromCursorHash(cursor))
-                ),
-              },
-              trackeddayId: trackedDayId,
-            },
-            include: [
-              {
-                model: models.TrackedDay,
-                required: true,
-                where: {
-                  userId: me.id,
+    trackedTasks: combineResolvers(
+      isAuthenticated,
+      async (
+        parent,
+        { trackedDayId, cursor, limit = 1000 },
+        { models, me }
+      ) => {
+        const cursorOptions = cursor
+          ? {
+              where: {
+                createdAt: {
+                  [Sequelize.Op.lt]: new Date(
+                    Number.parseInt(fromCursorHash(cursor))
+                  ),
                 },
+                trackeddayId: trackedDayId,
               },
-            ],
-          }
-        : {
-            where: {
-              trackeddayId: trackedDayId,
-            },
-            include: [
-              {
-                model: models.TrackedDay,
-                required: true,
-                where: {
-                  userId: me.id,
+              include: [
+                {
+                  model: models.TrackedDay,
+                  required: true,
+                  where: {
+                    userId: me.id,
+                  },
                 },
+              ],
+            }
+          : {
+              where: {
+                trackeddayId: trackedDayId,
               },
-            ],
-          };
-      const trackedTasks = await models.TrackedTask.findAll({
-        order: [["createdAt", "DESC"]],
-        limit: limit + 1,
-        ...cursorOptions,
-      });
+              include: [
+                {
+                  model: models.TrackedDay,
+                  required: true,
+                  where: {
+                    userId: me.id,
+                  },
+                },
+              ],
+            };
+        const trackedTasks = await models.TrackedTask.findAll({
+          order: [["createdAt", "DESC"]],
+          limit: limit + 1,
+          ...cursorOptions,
+        });
 
-      const hasNextPage = trackedTasks.length > limit;
-      const edges = hasNextPage ? trackedTasks.slice(0, -1) : trackedTasks;
+        const hasNextPage = trackedTasks.length > limit;
+        const edges = hasNextPage ? trackedTasks.slice(0, -1) : trackedTasks;
 
-      return {
-        edges: edges,
-        pageInfo: {
-          hasNextPage,
-          endCursor: calculateEndCursor(edges),
-        },
-      };
-    },
+        return {
+          edges: edges,
+          pageInfo: {
+            hasNextPage,
+            endCursor: calculateEndCursor(edges),
+          },
+        };
+      }
+    ),
   },
   Mutation: {
     createTrackedDay: combineResolvers(

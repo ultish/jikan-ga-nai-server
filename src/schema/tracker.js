@@ -21,7 +21,6 @@ export default gql`
     date: Float!
     chargeCode: ChargeCode!
     value: Float!
-    mode: DayMode
   }
   type TrackedDay {
     id: ID!
@@ -45,6 +44,7 @@ export default gql`
     code: String!
     description: String
     expired: Boolean!
+    mode: DayMode
   }
   type TimeBlock {
     id: ID!

@@ -652,14 +652,15 @@ export default {
             trackedTask.trackeddayId
           );
           debugger;
-          await updateTimesheetCodeChanges(
-            models,
-            me,
-            trackedDay
-            // trackedTask,
-            // previousChargeCodes
-            // chargeCodes
-          );
+          const timeBlocks = await models.TimeBlock.findAll({
+            attributes: ["id"],
+            where: {
+              trackedtaskId: trackedTask.id,
+            },
+          });
+          if (timeBlocks.length) {
+            await updateTimesheetCodeChanges(models, me, trackedDay);
+          }
         }
 
         return trackedTask;
@@ -802,16 +803,19 @@ export default {
           trackedTask.trackeddayId
         );
 
+        const timeBlocks = await models.TimeBlock.findAll({
+          attributes: ["id"],
+          where: {
+            trackedtaskId: trackedTask.id,
+          },
+        });
+        const hasTimeBlocks = timeBlocks.length > 0;
+
         const result = await models.TrackedTask.destroy({ where: { id } });
 
-        await updateTimesheetCodeChanges(
-          models,
-          me,
-          trackedDay
-          // trackedTask,
-          // previousChargeCodes,
-          // false
-        );
+        if (hasTimeBlocks) {
+          await updateTimesheetCodeChanges(models, me, trackedDay);
+        }
 
         if (result) {
           return id;

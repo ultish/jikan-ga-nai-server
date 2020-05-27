@@ -44,7 +44,6 @@ export default gql`
     code: String!
     description: String
     expired: Boolean!
-    mode: DayMode
   }
   type TimeBlock {
     id: ID!

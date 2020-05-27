@@ -81,42 +81,70 @@ sequelize.sync({ force: eraseDatabaseOnSync }).then(async () => {
 });
 
 const createUsersWithMessages = async (date) => {
-  await models.User.create(
-    {
-      username: "test",
-      email: "test@world.com",
-      password: "password",
-      role: "ADMIN",
-      messages: [
-        {
-          text: "Published the Road to learn React",
-          createdAt: date.setSeconds(date.getSeconds() + 1),
-        },
-      ],
-    },
-    {
-      include: [models.Message],
-    }
-  );
-  await models.User.create(
-    {
-      username: "jxhui",
-      email: "hello@world.com",
-      password: "password",
-      role: "ADMIN",
-      messages: [
-        {
-          text: "Happy to release...",
-          createdAt: date.setSeconds(date.getSeconds() + 1),
-        },
-        {
-          text: "Published a complete...",
-          createdAt: date.setSeconds(date.getSeconds() + 1),
-        },
-      ],
-    },
-    {
-      include: [models.Message],
-    }
-  );
+  // await models.User.create(
+  //   {
+  //     username: "test",
+  //     email: "test@world.com",
+  //     password: "password",
+  //     role: "ADMIN",
+  //     messages: [
+  //       {
+  //         text: "Published the Road to learn React",
+  //         createdAt: date.setSeconds(date.getSeconds() + 1),
+  //       },
+  //     ],
+  //   },
+  //   {
+  //     include: [models.Message],
+  //   }
+  // );
+  await models.User.create({
+    username: "jxhui",
+    email: "hui@project.com",
+    password: "password",
+    role: "ADMIN",
+  });
+
+  await models.ChargeCode.create({
+    name: "Local",
+    code: "Local",
+    description: "Local Support",
+    expired: false,
+  });
+  await models.ChargeCode.create({
+    name: "Remote",
+    code: "Remote",
+    description: "Remote Support",
+    expired: false,
+  });
+  await models.ChargeCode.create({
+    name: "556",
+    code: "556",
+    description: "556 Development",
+    expired: false,
+  });
+  await models.ChargeCode.create({
+    name: "Annual Leave",
+    code: "HOL_ANNUAL",
+    description: "Annual Leave",
+    expired: false,
+  });
+  await models.ChargeCode.create({
+    name: "Personal",
+    code: "HOL_PERSONAL",
+    description: "Personal Leave",
+    expired: false,
+  });
+  await models.ChargeCode.create({
+    name: "RDO",
+    code: "HOL_RDO",
+    description: "RDO",
+    expired: false,
+  });
+  await models.ChargeCode.create({
+    name: "Public Holiday",
+    code: "HOL_PUBLIC",
+    description: "Public Holiday",
+    expired: false,
+  });
 };

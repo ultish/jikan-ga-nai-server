@@ -396,7 +396,7 @@ const fetchTimesheet = async (models, me, trackedDayId) => {
     // TODO special case end of year and start of year scenarios
     if (date.weekYear() !== date.year()) {
       // endOfWeek becomes the last day of the year instead
-      endOfWeek = moment.endOf("year").startOf("day");
+      endOfWeek = moment().endOf("year").startOf("day");
     } else {
       endOfWeek = date.clone().endOf("isoweek").startOf("day");
     }

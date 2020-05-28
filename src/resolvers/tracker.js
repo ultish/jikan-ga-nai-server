@@ -25,7 +25,7 @@ const TIMEBLOCK_DURATION = 15;
 
 const timeChargeLock = new AsyncLock();
 
-const calculateEndCursor = (edges, field = "createdAt") => {
+export const calculateEndCursor = (edges, field = "createdAt") => {
   if (edges && edges.length) {
     return toCursorHash(edges[edges.length - 1][field].getTime().toString());
   } else {

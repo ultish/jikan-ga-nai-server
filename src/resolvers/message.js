@@ -4,6 +4,7 @@ import { combineResolvers } from "graphql-resolvers";
 import { isAuthenticated, isMessageOwner } from "./authorization";
 import Sequelize from "sequelize";
 import pubsub, { EVENTS } from "../subscriptions";
+import { calculateEndCursor } from "./tracker";
 
 export const toCursorHash = (string) => Buffer.from(string).toString("base64");
 export const fromCursorHash = (string) =>
@@ -35,9 +36,7 @@ export default {
         edges: edges,
         pageInfo: {
           hasNextPage,
-          endCursor: toCursorHash(
-            edges[edges.length - 1].createdAt.getTime().toString()
-          ),
+          endCursor: calculateEndCursor(edges),
         },
       };
     },

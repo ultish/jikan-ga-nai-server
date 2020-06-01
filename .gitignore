@@ -29,3 +29,4 @@ logfile
 
 .env
 node_modules/
+/build/

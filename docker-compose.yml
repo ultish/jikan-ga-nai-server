@@ -1,0 +1,32 @@
+version: '3.4'
+
+services:
+  db:
+    image: postgres
+    ports:
+      - "9999:5432"
+    environment:
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - postgres:/var/lib/postgresql/data
+
+  express:
+    build: .
+    ports:
+      - "9998:9998"
+    environment:
+      - DATABASE_PORT=5432
+      - DATABASE_HOSTNAME=db
+      - SYNC_DB=false
+    depends_on:
+      - db
+
+  ember:
+    build: ../jikan-ga-nai-client/docker/
+    ports:
+      - "9997:80"
+    depends_on:
+      - express
+
+volumes:
+  postgres:

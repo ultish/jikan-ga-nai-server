@@ -7,6 +7,9 @@ const sequelize = new Sequelize(
   process.env.DATABASE_USER,
   process.env.DATABASE_PASSWORD,
   {
+    // host: "masyu-postgres",
+    host: process.env.DATABASE_HOSTNAME || "localhost",
+    port: process.env.DATABASE_PORT || 5432,
     dialect: "postgres",
     logging: false,
   }

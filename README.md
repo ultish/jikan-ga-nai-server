@@ -1,6 +1,6 @@
 Just testing graphql.
 
-Playground: http://localhost:8000/graphql
+Playground: http://localhost:9998/graphql
 
 # External Setup
 
@@ -35,7 +35,7 @@ Go into the server folder and execute:
 npm start
 ```
 
-That will start the ExpressJs server and host GraphQL at http://localhost:8000/graphql
+That will start the ExpressJs server and host GraphQL at http://localhost:9998/graphql
 
 # Start Client
 

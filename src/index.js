@@ -69,6 +69,7 @@ const httpServer = http.createServer(app);
 server.installSubscriptionHandlers(httpServer);
 
 // Warning: turning this on will clear your DB
+console.log("sync db", process.env.SYNC_DB);
 const eraseDatabaseOnSync = process.env.SYNC_DB === "true" || false;
 
 console.log("erase db? " + eraseDatabaseOnSync);
@@ -77,9 +78,10 @@ sequelize.sync({ force: eraseDatabaseOnSync }).then(async () => {
     console.log("resetting database");
     createUsersWithMessages(new Date());
   }
-  httpServer.listen({ port: 9998 }, () => {
-    console.log("Apollo Server on http://localhost:9998/graphql");
-  });
+});
+
+httpServer.listen({ port: 9998 }, () => {
+  console.log("Apollo Server on http://localhost:9998/graphql");
 });
 
 const createUsersWithMessages = async (date) => {

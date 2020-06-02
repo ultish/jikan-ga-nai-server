@@ -1,6 +1,9 @@
 import Sequelize from "sequelize";
 
-console.log(process.env.DATABASE);
+console.log("database: ", process.env.DATABASE);
+console.log("user:", process.env.DATABASE_USER);
+console.log("dbHost:", process.env.DATABASE_HOSTNAME);
+console.log("dbPort:", process.env.DATABASE_PORT);
 
 const sequelize = new Sequelize(
   process.env.DATABASE,

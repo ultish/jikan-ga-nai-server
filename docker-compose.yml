@@ -25,7 +25,7 @@ services:
       - db
 
   ember:
-    imaeg: jikan-ga-nai-client
+    image: jikan-ga-nai-client
     #    build: ../jikan-ga-nai-client/docker/
     ports:
       - "9997:80"

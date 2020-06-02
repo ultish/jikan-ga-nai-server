@@ -1,4 +1,6 @@
-FROM node:12
+FROM node:12-alpine AS BUILD_IMAGE
+
+RUN apk update && apk add python make g++ && rm -rf /var/cache/apk/*
 
 # Create app directory
 WORKDIR /usr/src/app
@@ -16,8 +18,19 @@ RUN npm install
 # Bundle app source
 COPY . .
 
+# build our app
 RUN npm run build
-#RUN npm run build
+
+
+
+FROM node:12-alpine
+
+WORKDIR /usr/src/app
+
+# copy from build image
+COPY --from=BUILD_IMAGE /usr/src/app/dist ./dist
+COPY --from=BUILD_IMAGE /usr/src/app/node_modules ./node_modules
+COPY --from=BUILD_IMAGE /usr/src/app/.env ./
 
 EXPOSE 9998
 

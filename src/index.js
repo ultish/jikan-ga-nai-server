@@ -36,10 +36,15 @@ const getMe = async (req) => {
 
 const app = express();
 app.use(cors());
+// host static files from public dir
+app.use(express.static("public"));
 
 const server = new ApolloServer({
   typeDefs: schema,
   resolvers,
+  playground: {
+    cdnUrl: "/static",
+  },
   context: async ({ req, connection }) => {
     if (connection) {
       return {

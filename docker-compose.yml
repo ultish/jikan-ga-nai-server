@@ -29,6 +29,9 @@ services:
     #    build: ../jikan-ga-nai-client/docker/
     ports:
       - "9997:80"
+    environment:
+      - GRAPHQL_HOST=192.168.1.54
+      - GRAPHQL_PORT=9998
     depends_on:
       - express
 

@@ -31,6 +31,7 @@ WORKDIR /usr/src/app
 COPY --from=BUILD_IMAGE /usr/src/app/dist ./dist
 COPY --from=BUILD_IMAGE /usr/src/app/node_modules ./node_modules
 COPY --from=BUILD_IMAGE /usr/src/app/.env ./
+COPY --from=BUILD_IMAGE /usr/src/app/public ./public
 
 EXPOSE 9998
 

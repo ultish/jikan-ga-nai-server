@@ -21,6 +21,8 @@ services:
       - DATABASE_PORT=5432
       - DATABASE_HOSTNAME=db
       - SYNC_DB=false
+      # image is set to Australia/Melbourne by default
+#      - TZ=Australia/Sydney
     depends_on:
       - db
 

@@ -57,8 +57,6 @@ const updateTimesheetCodeChanges = async (models, me, trackedDay) => {
     },
   });
 
-  debugger;
-
   // fetch all tracked days for this timesheet
   const trackedDaysForTimesheet = await models.TrackedDay.findAll({
     where: {
@@ -93,7 +91,6 @@ const updateTimesheetCodeChanges = async (models, me, trackedDay) => {
       tb.startTime.valueOf()
     );
 
-    debugger;
     for (let timeBlock of uniqueTimeBlocks) {
       await updateTimesheet(
         models,
@@ -164,12 +161,10 @@ const updateTimesheet = async (
           userId: me.id,
         },
       });
-      debugger;
 
       const trackedTaskIds = _.uniq(
         timeBlocksAtSameTime.map((tb) => tb.trackedtaskId)
       );
-      debugger;
 
       let trackedTasks = [];
       if (trackedTaskIds.length) {
@@ -203,8 +198,6 @@ const updateTimesheet = async (
       // this can be negative when incrementing
       const blockWeightPerTaskDiff =
         newBlockWeightPerTask - oldBlockWeightPerTask;
-
-      debugger;
 
       // TODO trackedTaskIds can be empty
       // fetch charge code ids for each tracked task. Will determine weight of timeBlock for a single task
@@ -246,8 +239,6 @@ const updateTimesheet = async (
 
         // loop through each task on this time slot
         trackedTasks.forEach((trackedTaskForTimeSlot) => {
-          debugger;
-
           let valuePerChargeCode = 0;
 
           // get the chargecodes
@@ -258,7 +249,6 @@ const updateTimesheet = async (
             const timeBlockIdForTask =
               trackedTaskToTimeBlockMap[trackedTaskForTimeSlot.id];
 
-            debugger;
             let toIncrementForTask;
             if (reset) {
               // toIncrementForTask = true;
@@ -287,12 +277,9 @@ const updateTimesheet = async (
                     blockWeightPerTaskDiff / chargeCodesForTask.length;
                 }
               }
-
-              debugger;
             }
 
             chargeCodesForTask.forEach((chargeCodeId) => {
-              debugger;
               const timeCharge = timeChargeMap[chargeCodeId];
 
               timeCharge.value += valuePerChargeCode;
@@ -652,7 +639,7 @@ export default {
           const trackedDay = await models.TrackedDay.findByPk(
             trackedTask.trackeddayId
           );
-          debugger;
+
           const timeBlocks = await models.TimeBlock.findAll({
             attributes: ["id"],
             where: {
@@ -767,8 +754,6 @@ export default {
       async (parent, { id }, { models, me }) => {
         const timeBlock = await models.TimeBlock.findByPk(id);
         if (timeBlock) {
-          debugger;
-
           const trackedTask = await models.TrackedTask.findByPk(
             timeBlock.trackedtaskId
           );

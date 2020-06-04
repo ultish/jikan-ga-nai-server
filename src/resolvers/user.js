@@ -5,7 +5,7 @@ import { isAdmin } from "./authorization";
 
 const createToken = async (user, secret, expiresIn) => {
   const { id, email, username, role } = user;
-  return await jwt.sign({ id, email, username, role }, secret, {
+  return await jwt.sign({ id, username, role }, secret, {
     expiresIn,
   });
 };

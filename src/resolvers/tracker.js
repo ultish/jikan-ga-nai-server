@@ -405,6 +405,7 @@ const fetchTimesheet = async (models, me, trackedDayId) => {
     let timesheet = await models.Timesheet.findAll({
       where: {
         weekEndingDate: endOfWeek.toDate(),
+        userId: me.id,
       },
       limit: 1,
     });
@@ -435,7 +436,12 @@ export default {
     ),
 
     trackedDay: async (parent, { trackedDayId }, { models, me }) => {
-      return await models.TrackedDay.findByPk(trackedDayId);
+      return models.TrackedDay.findOne({
+        where: {
+          id: trackedDayId,
+          userId: me.id,
+        },
+      });
     },
 
     trackedDays: combineResolvers(
@@ -479,7 +485,7 @@ export default {
     timeBlocks: combineResolvers(
       isAuthenticated,
       async (parent, { trackedTaskId }, { models, me }) => {
-        return await models.TimeBlock.findAll({
+        return models.TimeBlock.findAll({
           where: {
             trackedtaskId: trackedTaskId,
           },
@@ -559,11 +565,6 @@ export default {
           userId: me.id,
         });
 
-        // TODO tie up the timesheet here
-
-        // pubsub.publish(EVENTS.TRACKER.CREATED_TRACKEDDAY, {
-        //   trackedDayCreated: { trackedDay },
-        // });
         return trackedDay;
       }
     ),

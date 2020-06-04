@@ -20,12 +20,11 @@ const user = (sequelize, DataTypes) => {
     },
     email: {
       type: DataTypes.STRING,
-      unique: true,
-      allowNull: false,
-      validate: {
-        notEmpty: true,
-        isEmail: true,
-      },
+      unique: false,
+      allowNull: true,
+      // validate: {
+      //   isEmail: true,
+      // },
     },
     role: {
       type: DataTypes.STRING,
@@ -41,11 +40,6 @@ const user = (sequelize, DataTypes) => {
     let user = await User.findOne({
       where: { username: login },
     });
-    if (!user) {
-      user = await User.findOne({
-        where: { email: login },
-      });
-    }
     return user;
   };
 

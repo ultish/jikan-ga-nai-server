@@ -1,8 +1,9 @@
-version: '3.4'
+version: '2.4'
 
 services:
   db:
     image: postgres
+    mem_limit: 50M
     ports:
       - "9999:5432"
     environment:
@@ -15,6 +16,7 @@ services:
   express:
     image: jikan-ga-nai-server
 #    build: .
+    mem_limit: 100M
     ports:
       - "9998:9998"
     environment:
@@ -29,6 +31,7 @@ services:
   ember:
     image: jikan-ga-nai-client
     #    build: ../jikan-ga-nai-client/docker/
+    mem_limit: 50M
     ports:
       - "9997:80"
     environment:

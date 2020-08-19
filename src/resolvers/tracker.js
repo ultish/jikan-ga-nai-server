@@ -7,7 +7,7 @@ import {
   isTrackedDayOwner,
   isTrackedTaskOwner,
 } from "./authorization";
-import { ForbiddenError } from "apollo-server";
+import { ForbiddenError, UserInputError } from "apollo-server";
 
 import pubsub, { EVENTS } from "../subscriptions";
 import chargecode from "../models/chargecode";
@@ -150,7 +150,8 @@ const updateTimesheet = async (
       const timeBlockDate = timeBlock.startTime;
 
       // for a given date of the timeBlock, we can have overlapping timeBlocks.
-      // this affects the amount each block increments/decrements for all
+      // this affects the amount each block increments/d
+      // ecrements for all
       // timeCharges at this time slot
 
       // fetch timeBlocks for a given date
@@ -546,6 +547,19 @@ export default {
     createTrackedDay: combineResolvers(
       isAuthenticated,
       async (parent, { date, mode }, { me, models }) => {
+        const existing = await models.TrackedDay.findAll({
+          where: {
+            date: new Date(date),
+            userId: me.id,
+          },
+        });
+        debugger;
+        if (existing.length) {
+          throw new UserInputError("Tracked Day already exists", {
+            trackeddayId: existing[0].id,
+          });
+        }
+
         const trackedDay = await models.TrackedDay.create({
           date: new Date(date),
           mode,
@@ -705,13 +719,7 @@ export default {
               userId: me.id,
             });
 
-            await updateTimesheet(
-              models,
-              me,
-              trackedDay,
-              // trackedTask,
-              timeBlock
-            );
+            await updateTimesheet(models, me, trackedDay, timeBlock);
 
             return timeBlock;
           } else {
@@ -761,14 +769,7 @@ export default {
             trackedTask.trackeddayId
           );
 
-          await updateTimesheet(
-            models,
-            me,
-            trackedDay,
-            // trackedTask,
-            timeBlock,
-            false
-          );
+          await updateTimesheet(models, me, trackedDay, timeBlock, false);
 
           const result = await models.TimeBlock.destroy({ where: { id } });
           if (result) {

@@ -12,7 +12,7 @@ const timeBlock = (sequelize, DataTypes) => {
       indexes: [
         {
           unique: true,
-          fields: ["startTime", "trackedtaskId"],
+          fields: ["startTime", "trackedtaskId", "userId"],
         },
         {
           fields: ["trackedtaskId"],

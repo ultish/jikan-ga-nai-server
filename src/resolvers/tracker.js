@@ -145,8 +145,8 @@ const updateTimesheet = async (
   const timesheet = await models.Timesheet.findByPk(trackedDay.timesheetId);
 
   if (timesheet) {
-    // get the 'timecharged' lock
-    await timeChargeLock.acquire("timecharged", async () => {
+    // get the 'timecharged' lock, unique per user
+    await timeChargeLock.acquire(`${me.id}:timecharged`, async () => {
       const timeBlockDate = timeBlock.startTime;
 
       // for a given date of the timeBlock, we can have overlapping timeBlocks.
@@ -712,6 +712,26 @@ export default {
             trackedTask.trackeddayId
           );
           if (trackedDay && trackedDay.userId === me.id) {
+            const existing = await models.TimeBlock.findAll({
+              where: {
+                userId: me.id,
+                startTime: startTime,
+                trackedtaskId: trackedTaskId,
+              },
+              limit: 1,
+            });
+            if (existing && existing.length) {
+              console.warn(
+                "Time Block already exists",
+                existing[0].id,
+                existing[0].startTime,
+                existing[0].userId
+              );
+              throw new UserInputError("Time Block already exists", {
+                timeBlockId: existing[0].id,
+              });
+            }
+
             const timeBlock = await models.TimeBlock.create({
               trackedtaskId: trackedTaskId,
               startTime,

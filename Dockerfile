@@ -1,5 +1,6 @@
 FROM node:12-alpine AS BUILD_IMAGE
 
+# install vim as well
 RUN apk update && apk add python make g++ vim && rm -rf /var/cache/apk/*
 
 # Create app directory
